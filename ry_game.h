@@ -34,10 +34,24 @@ public:
       cerr << "Drawpile: ";
       drawpile.describe();
       cerr << endl << endl;
-    }  
+    }
+    
+    for(int i = 0; i < GameConstants::NUM_PLAYERS; ++i)
+    {
+      cerr << GameConstants::GetTeam(i) << " last move: ";
+      lastturns[i].describe();
+      cerr << endl << endl;
+    }
+    
+    for(int i = 0; i < GameConstants::NUM_PLAYERS; ++i)
+    {
+      cerr << GameConstants::GetTeam(i) << " hand: ";
+      hands[i].describe();
+      cerr << endl << endl;
+    }
   }
   
-private:  
+public:  
   NormalStack myhand;
   ProbStack hands[GameConstants::NUM_PLAYERS];
   NormalStack discards[GameConstants::NUM_COLORS];
