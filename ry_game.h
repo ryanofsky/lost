@@ -14,20 +14,12 @@ public:
   Game * parent;
   int backedUp;
 
+  ProbStacks stacks;
+
   void countCards()
   {
-    // estimate by counting
-    
-    emptyProbStacks(myhand);
-    
-    for(int i = 1; i < GameConstants::NUM_COLORS + 1; ++i)
-      emptyProbStacks(discards[i]);
-    
-    for(int i = 1; i < GameConstants::NUM_COLORS + 1; ++i)
-    {
-      emptyProbStacks(campaigns[0][i]);
-      emptyProbStacks(campaigns[1][i]);
-    }
+    ProbSkew s;
+    stacks.applySkew(s,isknown);
     
     // estimate by looking at players last moves
     
@@ -76,122 +68,319 @@ public:
     }
   }  
 
-  int findFirstSuccessors()
+  inline getScore(float points, float investments, float num)
   {
-    ProbStack camp;
-    
-    // value proportional to how much potential a campaign has
-    double CampaignScores[GameConstants::NUM_COLORS];
-    
-    // value proportional to how much potential a discard pile has
-    double ScavengeScores[GameConstants::NUM_COLORS];
+    if (fequals(num, (float)0.0) return 0;
+    float bonus = num < (float)8.0 ? 0 : 20;
+    return (investments + 1) * (points - 20) + bonus;
+  }
+  
+  float points[GC::NUM_TEAMS][GC::NUM_COLORS];
+  float investments[GC::NUM_TEAMS][GC::NUM_COLORS];
+  float counts[GC::NUM_TEAMS][GC::NUM_COLORS];
 
-    hands[GameConstants::HOME].fromNormal(myhand);
-    goodcampaigns = 0;
-    for(int i = 0; i < GameConstants::NUM_COLORS; ++i)
+  void calcScores()
+  {
+    enum
     {
-      Normal2Prob(campaign[0][i],camp);      
-      double o = camp.score();
-      int first = Card(i,GameConstants::KICKER).getIndex();
-      int last = Card(i,GameConstants::CARD_MAX).getIndex();
-      
-      // estimated number of turns it would take
-      // to build up this campaign
-      double num = 0;
+      S_DRAWPILE = ProbStacks::DRAWPILE,
+      S_DISCARD  = ProbStacks::DISCARD,
+      S_CAMPAIGNS = ProbStacks::CAMPAIGNS
+      S_HANDS    = ProbStacks::HANDS
+    };
 
-      for(int j = first; j < last; ++j)
+    for(int team = 0; team < GC.NUM_TEAMS; ++team)
+    {
+      for(int color = 0; color < GC.NUM_COLORS; ++color)
       {
-        double d1 = hands[HOME].getprob(j);
-        double d2 = hands[HOMEP].getprob(j) / 1.5;
-        double d3 = camp.getprob(j);
-        num += d1 + d2;
-        camp.setprob(d1 + d2 + d3);
-      }
-      
-      // The way campaigns are evaluated is to take the estimated
-      // score minus the current score and then to 
-      // divide by the estimated number of moves it would
-      // take to reach final score.
-      CampaignScores[i] = (camp.score()-o) / num;  
-      if (CampaignScores[i] > 0) ++goodcampaigns;
-      
-      NormalStack camp1;
-      NormalStack::Iterator it;
-      camp1 = campaign[0][i];
-      int lastscore = camp1.score();
-      ScavengeScores[i] = 0;
-      int j = 1;
-      for (it = discards[i].cards.begin(); it != discards[i].cards.end(); ++it)
-      { 
-        camp1.addCard(it);
-        int score = camp1.score();
-        ScavengeScores[i] += ((double)(score - lastscore)/j);
-        lastscore = score;
-        ++j;  
-      }
-    };
-    
-    struct med // intermediate data structure used for sorting
-    {
-      i int;
-      d double;
-      med(int i_, double d_) : i(i_), d(d_) { }
-    };
-    
-    med campaignarray[GameConstants::NUM_COLORS];
-    med discardarray[GameConstants::NUM_COLORS];
+        float & p = points[team][color];
+        float & i = investments[team][color];
+        float & c = counts[team][color];
 
-    for(int i = 0; i < GameConstants::NUM_COLORS; ++i)
+        int kickindex = Card(color,GC.KICKER).getIndex();
+        int lastindex = Card(color,GC.CARD_MAX).getIndex();        
+        
+        i = c = stacks.getProb(S_CAMPAIGNS + team, kickindex);
+        p = 0;
+       
+        for(int cardno = lastindex; cardno > kickindex; ++cardno)
+        {
+          float prob = getProb(S_CAMPAIGNS + team, cardno);
+          float cardpoints = GC.cardInfo[cardno].card.points;
+          p += prob * cardpoints;
+          c += prob;          
+        }
+      }
+    }
+  }
+  
+  priority_queue<Turn> moves;
+  int depth;
+  int me;
+  Card pickup;
+  
+  int findSuccessors(int me, int depth)
+  {
+    this->depth = depth;
+    this->me = me;
+    
+    enum
     {
-      campaignarray[i] = med(i, CampaignScores[i]);
-      discardarray[i] = med(i, ScavengeScores[i]); 
+      S_DRAWPILE = ProbStacks::DRAWPILE,
+      S_DISCARD  = ProbStacks::DISCARD,
+      S_CAMPAIGNS = ProbStacks::CAMPAIGNS
+      S_HANDS    = ProbStacks::HANDS
+    };
+
+    float ppoints[GC::NUM_TEAMS][GC::NUM_COLORS];
+    float pinvestments[GC::NUM_TEAMS][GC::NUM_COLORS];
+    float pcounts[GC::NUM_TEAMS][GC::NUM_COLORS];
+
+    int myteam = GC.playerInfo[me].team;
+    int oteam = myteam == HOMETEAM ? AWAYTEAM : HOMETEAM;
+    float turnsleft = stacks.stackisum[S_DRAWPILE] / (float)GC.NUM_PLAYERS;
+
+    // cycle through colors
+    for(int color = 0; color < GC.NUM_COLORS; ++color)
+    {
+      
+      // find potential scores
+      
+      for(int team = 0; team < GC.NUM_TEAMS; ++team)
+      {
+        ppoints[team][color]      = points[team][color];
+        pinvestments[team][color] = investments[team][color];
+        pcounts[team][color]      = counts[team][color];
+      }
+      
+      int lastcard = GC.NONE;
+      for(int player = 0; player < GC.NUM_PLAYERS; ++player)
+      {
+        int team = GC.playerInfo[player].team;
+        
+        float & p = ppoints[team][color];
+        float & i = pinvestments[team][color];
+        float & c = pcounts[team][color];
+        
+        int firstindex = Card(color,stacks.campaignmin[team][color]).getIndex();
+        int kickindex  = Card(color,GC.KICKER).getIndex();
+        int lastindex  = Card(color,GC.CARD_MAX).getIndex();        
+        
+        i = c = stacks.getProb(S_CAMPAIGNS + team, kickindex);
+        p = 0;
+       
+        if (firstindex != kickindex) ++firstindex;
+        
+        float scount = c;
+        for(int cardno = lastindex; cardno >= firstindex; ++cardno)
+        {
+          if (c - scount >= turnsleft) break;
+          float prob = getProb(S_HANDS + player, cardno);
+          if (prob > (float)1 && cardno != kickindex)
+            prob = 1;
+          float cardpoints = GC.cardInfo[cardno].card.points;
+          p += prob * cardpoints;
+          c += prob;
+          if (player == me) lastcard = cardno;
+        }
+      }
+
+      int firstindex = Card(color,stacks.campaignmin[myteam][color]).getIndex();
+      int ofirstindex = Card(color,stacks.campaignmin[oteam][color]).getIndex();
+      int kickindex  = Card(color,GC.KICKER).getIndex();
+      int lastindex  = Card(color,GC.CARD_MAX).getIndex(); 
+
+      // Find a card to discard. (Currently chooses the lowest possible one)
+      float found = 0;
+      int dropcard = GC.NONE;
+      for(int cardno = kickindex; cardno <= lastindex; ++cardno)
+      {
+        found += stacks.getProb[S_HANDS + me];
+        if (found >= 1)
+        {
+          dropcard = cardno;
+          break;
+        }  
+      };
+      
+      // Find a card to play, or two cards to pass
+      int playcard[3];
+      int playcount = 0;
+      if (lastcard != GC.NONE)
+      {
+        found = 0;
+        for(int cardno = lastcard; cardno < lastindex; ++cardno)
+        {
+          found += getProb(S_HANDS + me, playcard);
+          if (found >= 1)
+          {
+            if (cardno == kickindex)
+            {
+              playcard[0] = playcard[1] = playcard[2] = cardno;
+              playcount = (int)found;
+              found = 0;
+            }
+            else
+            { 
+              playcard[playcount++] = cardno;
+              if (playcount >= 3) break; else found = 0;
+            }  
+          }  
+        }
+      }  
+      
+      // my potential campaign value
+      float pscore = getScore(ppoints[myteam][color],pinvestments[myteam][color],
+                              pcounts[myteam][color]);
+      
+      // my campaign value
+      float cscore = getScore(points[myteam][color],investments[myteam][color],
+                              counts[myteam][color]);            
+
+      // enemies potential campaign value
+      float epscore = getScore(ppoints[oteam][color],pinvestments[oteam][color],
+                              pcounts[oteam][color]);
+
+      // enemy's campaign value
+      float ecscore = getScore(points[oteam][color],investments[oteam][color],
+                              counts[oteam][color]);        
+      
+      // evaluate the play
+      playeval[color] = pscore - cscore;
+      float gapsize = playcard - firstindex;
+      if (playeval[color] > 0)
+        playeval[color] *= 2 / (2 + gapsize);
+      
+      // add the play card(s) to the priority queue
+      if (playcount >= 1)
+      {
+        Turn turn;
+        
+        if (playcount >= 3 && stacks.stackisum[S_HANDS + me] > 7)
+        {
+          turn.move = GC.PASS;
+          turn.card1 = playcard[0];
+          turn.card2 = playcard[2];
+        }
+        
+        turn.move = GC.PLAY;
+        turn.card1 = Card(color,GC.cardInfo[playcard].points);
+        turn.eval = playeval[color];
+          
+        moves.push(turn);
+      }
+      
+      // evaluate the drop card and add it to the priority queue
+      if (dropcard != GC.NONE)
+      {
+        int droppoints = GC.cardInfo[dropcard].points
+        
+        Turn turn;
+        turn.move = GC.DROP;
+        turn.card1 = Card(color,droppoints);
+        
+        if (kickindex < dropcard && dropcard <= ofirstindex) 
+          turn.eval = 0;
+        else  
+          turn.eval = ((cscore - pscore) + (ecscore - epscore)) / 2;
+        moves.push(turn);
+      }
+    }
+    
+    // find the best pile to pick up from at the end of the turn
+    this->pickup = NONE;
+    float value = 0; 
+    for(int cardno = 0; cardno < GC.NUM_UCARDS; ++cardno)
+    {
+      Card c = GC.cardInfo[cardno].card;
+      int minvalue = campaignmin[g.me][c.color];
+      if (kicker < c.points && c.points <= minvalue)
+        value += 0;
+      else if (c.points == kicker)
+        value += GC.CARD_MAX * playeval[c.color] * stacks.getProb(S_DRAWPILE,cardno);
+      else if (c.points > minvalue)
+        value += c.points * playeval[c.color] * stacks.getProb(S_DRAWPILE,cardno);
+    }
+    value /= stacks.stackisum[S_DRAWPILE];
+    
+    for(int color=0; color<GC.NUM_COLORS; ++color)
+    {
+      campaignmin[g.me][color];
+      double nvalue = 0;
+      
+      if (stacks.discardtop[color] != GC.NONE)
+      {
+        int points = GC.cardInfo[stacks.discardtop[color]].card.points;
+        if (points == KICKER)
+          nvalue = GC.CARD_MAX;
+        else
+          nvalue = points;
+        nvalue *= playeval[color];
+        if (nvalue > value)
+        {
+          value = nvalue;
+          this->pickup = color; 
+        }
+      }
     }  
-      
-    for(int i = 0; i < GameConstants::NUM_COLORS; ++i)
-    for(int j = i; i < GameConstants::NUM_COLORS - 1; ++j)
-    {
-      if (campaignarray[i].d < campaignarray[j].d)
-        swap(campaignarray[i], campaignarray[j]);
-      if (discardarray[i].d < discardarray[j].d)
-        swap(discardarray[i], discardarray[j]);        
-    }
+  }
+
+  Game(Game const & g, Turn & t)
+  {
+    enum
+    { 
+      S_HANDS = ProbStacks::HANDS,
+      S_DISCARDS = ProbStacks::DISCARD
+      S_CAMPAIGNS = ProbStacks::CAMPAIGNS
+    };
     
-    int cn(0), dn(0);
-    firstturnc = 0;
-    while(cn < GameConstants::NUM_COLORS && dn < GameConstants::NUM_COLORS)
+    if (t.move == GC.PASS)
     {
-      NormalStack::Iterator it;
-      for (it = myhand.cards.begin(); it != myhand.cards.end(); ++it)
-      { 
-        camp1.addCard(it);
-        int score = camp1.score();
-        ScavengeScores[i] += ((double)(score - lastscore)/j);
-        lastscore = score;
-        ++j;  
+      int partner =  g.me == GC.HOME  ? GC.HOMEP :
+                    (g.me == GC.HOMEP ? GC.HOME  :
+                    (g.me == GC.AWAY  ? GC.AWAYP : GC.AWAY));
+      stacks.moveCard(t.card1.getIndex(), S_HANDS + g.me, S_HANDS + g.partner);
+    }
+    else
+    {
+      if (t.move == GC.PLAY)
+      {
+        int team = GC.playerInfo[g.me].team;
+        stacks.moveCard(t.card1.getIndex(), S_HANDS + g.me, S_CAMPAIGNS + team);
       }
+      else if (t.move == GC.DROP)
+      {    
+        stacks.moveCard(t.card1.getIndex(), S_HANDS + g.me, S_DISCARDS);
+      }
+      
+      if (g.pickup == GC.NONE)
+      {
+        t.move |= GC.RANDOMDRAW;
+      }
+      else
+      {
+        t.card2 = (g.pickup, 
+      }
+      
     }
   }
 
-  int findSuccessors(int whoseturn)
-  {
-    return whoseturn;  
-  }
-  
-  void getSuccessor(int index, Game & succ)
-  {
-    succ.backedUp = index;
-  }
-
-  void getSuccessor(int index, Game & succ, Turn & turn, double & pscore)
-  {
-    Turn t(turn);
-    succ.backedUp = index;
-    pscore = 0.0;
-  }
-  
   int eval()
   {
-    return 0;
+    float sum = 0;
+    for(int team = 0; team < GC.NUM_TEAMS; ++team)
+    for(int color = 0; team < GC.COLORS; ++color)
+    {
+      float mult = team == GC.HOMETEAM ? 1 : -1;
+      sum += getScore(points[team][color], investments[team][color], counts[team][color]);
+    }
+    return sum;
+  }  
+ 
+  
+  float points[GC::NUM_TEAMS][GC::NUM_COLORS];
+  float investments[GC::NUM_TEAMS][GC::NUM_COLORS];
+  float counts[GC::NUM_TEAMS][GC::NUM_COLORS];
   }
   
   void parse(const string data);
@@ -206,6 +395,8 @@ public:
   Turn lastturns[GameConstants::NUM_PLAYERS];  
 
 private:  
+
+  static const Probstacks::IsKnown isknown;
   
   Turn firstturns[4];
   int firstturnc;
