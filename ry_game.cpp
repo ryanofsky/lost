@@ -1,5 +1,4 @@
 #include "ry_game.h"
-
 #include "ry_gameconstants.h"
 #include "ry_card.h"
 #include "ry_turn.h"
@@ -8,17 +7,25 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include <iostream>
+#include <iomanip>
 #include <assert.h>
 #include <math.h>
 
-
 using std::cerr;
 using std::endl;
+using std::setw;
 
-extern const GameConstants GC;
+Game::Game() : stacks(), whoseturn(GC.HOME), parent(NULL)
+{
+}
 
 void Game::parse(const string data)
 {
+  // this method is long, long, long and complicated.
+  // it is efficient, though, and fairly robust
+  // I didn't put as many comments in here as in the rest of the program
+  // where there is AI code. this is just a big loop.
+  
   /////////////////////////////////////////////////////////////////// CONSTANTS
 
   enum
@@ -38,10 +45,10 @@ void Game::parse(const string data)
     PASS        = GameConstants::PASS,
     RANDOMDRAW  = GameConstants::RANDOMDRAW,
     NONE        = GameConstants::NONE,
-    S_DRAWPILE  = ProbStacks::DRAWPILE,
-    S_DISCARD   = ProbStacks::DISCARD,
-    S_HANDS     = ProbStacks::HANDS,
-    S_CAMPAIGNS = ProbStacks::CAMPAIGNS
+    S_DRAWPILE  = CardStacks::DRAWPILE,
+    S_DISCARD   = CardStacks::DISCARD,
+    S_HANDS     = CardStacks::HANDS,
+    S_CAMPAIGNS = CardStacks::CAMPAIGNS
   }; 
   
   enum { MAXHYPHENS = 3 };
@@ -106,7 +113,8 @@ void Game::parse(const string data)
         currentmode = COMPLAIN;
         int token,whichteam,whichcolor,whichplayer;
 
-        if ( map_get(GC.tokens, string_slice(data, field_start, hyphens ? hyphen[0] : i),token) )
+        if ( map_get(GC.tokens, string_slice(data, field_start, hyphens
+             ? hyphen[0] : i),token) )
         switch(token)
         {
           case HAND:
@@ -118,12 +126,15 @@ void Game::parse(const string data)
             {
               if
               (
-                map_get(GC.players, string_slice(data, hyphen[0]+1, hyphen[1]),whichteam)
+                map_get(GC.players, string_slice(data, hyphen[0]+1, hyphen[1]),
+                        whichteam)
                 &&
-                map_get(GC.colors, string_slice(data, hyphen[1]+1, i),whichcolor)
+                map_get(GC.colors, string_slice(data, hyphen[1]+1, i),
+                        whichcolor)
               )
               {
-                whichteam = whichteam == GC.HOME || whichteam == GC.HOMEP ? GC.HOMETEAM : GC.AWAYTEAM;
+                whichteam = whichteam == GC.HOME || whichteam == GC.HOMEP 
+                            ? GC.HOMETEAM : GC.AWAYTEAM;
                 currentstack = S_CAMPAIGNS + whichteam;
                 currentmode = ADDCARD;
               }
@@ -132,7 +143,8 @@ void Game::parse(const string data)
           case DISCARD:
             if (hyphens == 1)
             {
-              if (map_get(GC.colors, string_slice(data, hyphen[0]+1, i),whichcolor))
+              if (map_get(GC.colors, string_slice(data, hyphen[0]+1, i), 
+                  whichcolor))
               {
                 currentstack = S_DISCARD;
                 currentmode = ADDCARD;
@@ -142,7 +154,8 @@ void Game::parse(const string data)
           case HANDSIZE:
             if (hyphens == 1)
             {
-              if (map_get(GC.players, string_slice(data, hyphen[0]+1, i),whichplayer))
+              if (map_get(GC.players, string_slice(data, hyphen[0]+1, i), 
+                  whichplayer))
               {
                 currentstack = S_HANDS + whichplayer;
                 currentmode = SETLENGTH;
@@ -159,7 +172,8 @@ void Game::parse(const string data)
           case TURN:
             if (hyphens == 1)
             {
-              if (map_get(GC.players, string_slice(data, hyphen[0]+1, i),whichplayer))
+              if (map_get(GC.players, string_slice(data, hyphen[0]+1, i), 
+                  whichplayer))
               {
                 currentturn = &lastturns[whichplayer];
                 currentmode = SETTURN;
@@ -180,7 +194,11 @@ void Game::parse(const string data)
         switch(currentmode)
         {
           case ADDCARD:
-            if (i - field_start == 2 && Card::Parse(str[field_start], str[field_start+1],c))
+            if
+            (
+              i - field_start == 2
+              && Card::Parse(str[field_start], str[field_start+1],c)
+            )
               stacks.addCard(currentstack, c.getIndex());
             else
               errormsg = "Unable to parse card";
@@ -199,10 +217,13 @@ void Game::parse(const string data)
               errormsg = "Expected integer, not";
           break;
           case SETTURN:
-            havecard = i - field_start == 2 && Card::Parse(str[field_start], str[field_start+1],c);
+            havecard = i - field_start == 2 
+                       && Card::Parse(str[field_start], str[field_start+1],c);
+            
             fend = hyphens > 0 ? hyphen[0] : i;
             
-            if (!map_get(GC.moves, string_slice(data, field_start, fend),whichmove))
+            if (!map_get(GC.moves, string_slice(data, field_start, fend), 
+                whichmove))
               whichmove = 0;
 
             nomove = ((currentturn->move & ~RANDOMDRAW) == 0);
@@ -223,14 +244,16 @@ void Game::parse(const string data)
                 }
                 else if (whichmove != 0)
                 {
-                  errormsg = "Campaign move must be followed by a card. Error near";
+                  errormsg = "Campaign move must be followed by a card. "
+                             "Error near";
                   lastmove = whichmove;
                 }
                 else
                   errormsg = "Cruft";
               break;
               case DROP:
-                if (nomove) // haven't moved so we are adding a card to a discard pile
+                // haven't moved so we are adding a card to a discard pile
+                if (nomove) 
                 {
                   if (havecard)
                   {
@@ -239,12 +262,15 @@ void Game::parse(const string data)
                     lastmove = 0;
                   }
                   else if (whichmove != 0)
-                    errormsg = "Discard move must be followed by a card. Error near";
+                    errormsg = "Discard move must be followed by a card. "
+                               "Error near";
                   else
                     errormsg = "Cruft";
                 }
-                else // moved already, so we are picking up a card from a discard pile (!nomove)
+                else // !nomove, 
                 {
+                  // moved already, so we are picking up a card
+                  // from a discard pile 
                   if (havecard)
                   {
                     if (!currentturn->card2)
@@ -253,7 +279,8 @@ void Game::parse(const string data)
                       currentturn->move &= ~RANDOMDRAW;
                     }
                     else
-                      errormsg = "Can't pick up more than one card during a turn. Error near";
+                      errormsg = "Can't pick up more than one card during a "
+                                 "turn. Error near";
                   }
                   else if (whichmove != 0)
                     lastmove = whichmove;
@@ -268,7 +295,8 @@ void Game::parse(const string data)
                     currentturn->card2 = c;
                   }
                   else
-                    errormsg = "Can't pick up more than one card during a turn. Error near";
+                    errormsg = "Can't pick up more than one card during a turn." 
+                               " Error near";
                 }
                 else if (whichmove != 0)
                   lastmove = whichmove;
@@ -286,7 +314,8 @@ void Game::parse(const string data)
                   else if (!currentturn->card2)
                     currentturn->card2 = c;
                   else
-                    errormsg = "Not allowed to pass more than two cards. Error near";
+                    errormsg = "Not allowed to pass more than two cards. "
+                               "Error near";
                 }
               break;
             } // switch(lastmove)
@@ -294,9 +323,11 @@ void Game::parse(const string data)
             if (whichmove == RANDOMDRAW)
             {
               if (currentturn->move == PASS)
-                errormsg = "Not allowed to draw from the drawpile when you are passing. Error near";
+                errormsg = "Not allowed to draw from the drawpile when you "
+                           "are passing. Error near";
               else if (!currentturn->card2.color)
-                errormsg = "Not allowed to draw from the drawpile if you chose to draw from the discard pile instead. Error near";
+                errormsg = "Not allowed to draw from the drawpile if you chose "
+                           "to draw from the discard pile instead. Error near";
               else
                 currentturn->move |= RANDOMDRAW;
             }
@@ -313,54 +344,518 @@ void Game::parse(const string data)
     } // if (is_sep)
   } // for
   
+  // normalize unknown stack distributions
   stacks.normalize(isknown);
 }
 
+void Game::countCards()
+{
+  // skew matrix filled with 0s. As we go through the previous moves,
+  // we start to fill this matrix with 1s, 2s, 3s, -1s, -2s, etc...
+  // positive numbers increase the likelihood that a card is in a stack
+  // negative numbers decrease the likelihood
+  
+  StackSkew stackSkew;
+  
+  // give "stackSkew.skew" the shorter name "skew"
+  CardStacks::DistMatrix & skew = stackSkew.skew;
+ 
+  // give constants shorter names
+  enum
+  {
+    S_DRAWPILE  = CardStacks::DRAWPILE,
+    S_DISCARD   = CardStacks::DISCARD,
+    S_CAMPAIGNS = CardStacks::CAMPAIGNS,
+    S_HANDS     = CardStacks::HANDS
+  };
+ 
+  // estimate by looking at players last moves
+  int players[] =
+  { 
+    GC.HOMEP,
+    GC.AWAY,
+    GC.AWAYP
+  };
+  
+  // loop through players
+  for(int i = 0; i < DIM(players); ++i)
+  {
+    int p = players[i];
+    int team = GC.playerInfo[p].team;
+    Turn turn = lastturns[p];
+    int move = turn.move & ~GC.RANDOMDRAW;
+    
+    if (move == GC.PLAY)
+    {
+      // very unlikely they have any lower cards of the campaign they just
+      // played, therefore lower likelihood of lower cards
+      int s = Card(turn.card1.color, GC.KICKER).getIndex();
+      int e = turn.card1.getIndex();
+      for(int cardno = s; cardno < e; ++cardno)
+        skew[S_HANDS + p][cardno] -= 5.0;
+      
+      // likewise, raise slightly the likelihood that they have higher cards
+      int l = Card(turn.card1.color, GC.CARD_MAX).getIndex();
+      for(int cardno = e+1; cardno <= l; ++cardno)
+        skew[S_HANDS + p][cardno] += 0.8;
+    }
+    else if (move == GC.DROP)
+    {
+  
+      // If they dropped a card, they probably don't have many others that
+      // are the same color (ignore the possibility that they are bluffing)
+      
+      int s = Card(turn.card1.color, GC.KICKER).getIndex();
+      int c = turn.card1.getIndex();
+      int e;
+      
+      // If the card they dropped wasn't playable, it doesn't mean they
+      // don't have higher cards that are playable.
+
+      int m = stacks.campaignmin[GC.playerInfo[p].team][turn.card1.color];
+
+      if (m == GC.NONE)
+        e = Card(turn.card1.color, GC.CARD_MAX).getIndex();
+      else
+        e = Card(turn.card1.color, m).getIndex() - 1;
+
+      for(int cardno = s; cardno <= e; ++cardno)
+        skew[S_HANDS + p][cardno] -= (cardno == c) ? 0.0 : 1.0;
+    }
+    else if (move == GC.PASS && turn.card1 && turn.card2)
+    {
+      int moved1 = turn.card1.getIndex();
+      int moved2 = turn.card2.getIndex();
+
+      if (turn.card1.color == turn.card2.color)
+      {
+        // passed two cards of the same color.
+        // raise the likelihood that this person has higher cards
+        // of the same campaign
+        
+        int s = Card(turn.card1.color, GC.KICKER).getIndex();
+        int e = Card(turn.card1.color, GC.CARD_MAX).getIndex();
+
+        bool decrease = true;   
+        for(int c = s; c <= e; ++c)
+        {                       
+          if (c == moved1 || c == moved2)
+            decrease = false;   
+          else if (decrease)        
+            skew[S_HANDS + p][c] -= 0.5;
+          else
+            skew[S_HANDS + p][c] += 1.0;
+        }
+      }
+      else
+      {
+        // passed two random cards, so slightly lower the likelihood that
+        // partner has other cards of these colors
+        
+        int s1 = Card(turn.card1.color, GC.KICKER).getIndex();
+        int e1 = Card(turn.card1.color, GC.CARD_MAX).getIndex();
+        int s2 = Card(turn.card2.color, GC.KICKER).getIndex();
+        for(int c1 = s1; c1 <= e1; ++c1)
+        {
+          int c2 = c1+s2-s1;
+          if (c1 != moved1)
+            skew[S_HANDS + p][c1] -= 0.5;
+          if (c2 != moved2)  
+            skew[S_HANDS + p][c2] -= 0.5;
+        }
+      }
+    }
+  }
+      
+  stacks.applySkew(stackSkew,isknown);
+}  
+
 void Game::describe()
 {
-/*
-  cerr << "My Cards:  ";
-  myhand.describe();
-  cerr << endl << endl;
+  // just print out the values of many variables here
   
-  for(int i = 0; i < 2; ++i)
+  char const * stacklabels[] = 
   {
-    if (i == 0)
-      cerr << "My Campaigns:" << endl << endl;
-    else
-      cerr << "Opposing Campaigns:" << endl << endl;
+    "DRAW", // DRAWPILE
+    "DISC", // DISCARD
+    "HCAM", // CAMPAIGNS + HOMETEAM
+    "ACAM", // CAMPAIGNS + AWAYTEAM
+    "ME",   // HANDS + HOME
+    "OPP",  // HANDS + AWAY
+    "PART", // HANDS + HOMEP
+    "OPRT"  // HANDS + AWAYP
+  };
+
+  cerr << "Fuzzy Distributions of cards in each stack (x100)\n\n";
   
-    for(int j = 0; j < GameConstants::NUM_COLORS; ++j)
-    {
-      cerr << "  " << GameConstants::GetColor(j) << " ";
-      cerr << "Campaign: ";
-      campaigns[i][j].describe();
-      cerr << endl;
-    }
+  cerr << "Card  ";
+  
+  for(int col = 0; col < DIM(stacklabels); ++col)
+    cerr << setw(6) << stacklabels[col];
+  cerr << endl;
+  
+  for(int cardno = 0; cardno < GC.NUM_UCARDS; ++cardno)
+  {
+    Card card = GC.cardInfo[cardno].card;
+    cerr << GC.pointSymbol(card.points) << GC.colorInfo[card.color].symbol
+         << "   ";
+    for(int col = 0; col < DIM(stacklabels); ++col)
+      cerr << setw(6) << (int)(stacks.dist[col][cardno] * 100.0);
     cerr << endl;
-    
-    cerr << "Drawpile: ";
-    drawpile.describe();
-    cerr << endl << endl;
   }
+  cerr << "Isum";
+  for(int col = 0; col < DIM(stacklabels); ++col)
+    cerr << setw(6) << (int)(stacks.stackisum[col]*100);
+  cerr << endl;
+
+  cerr << "Sum ";
+  for(int col = 0; col < DIM(stacklabels); ++col)
+    cerr << setw(6) << (int)(stacks.stacksum[col]*100);
+  cerr << endl << endl;
+
+  cerr << "Last Turns:"<< endl << endl;  
   
   for(int i = 0; i < GameConstants::NUM_PLAYERS; ++i)
   {
-    cerr << GameConstants::GetTeam(i) << " last move: ";
+    cerr << GC.playerInfo[i].possesive << " last move: ";
     lastturns[i].describe();
     cerr << endl << endl;
   }
-  
-  for(int i = 0; i < GameConstants::NUM_PLAYERS; ++i)
-  {
-    cerr << GameConstants::GetTeam(i) << " hand: ";
-    hands[i].describe();
-    cerr << endl << endl;
-  }
-*/
 }
 
-bool const Game::isknown[ProbStacks::NUM_STACKS] = 
+void Game::findSuccessors()
+{
+  // give shorter names to CardStacks constants
+  enum
+  {
+    S_DRAWPILE = CardStacks::DRAWPILE,
+    S_DISCARD  = CardStacks::DISCARD,
+    S_CAMPAIGNS = CardStacks::CAMPAIGNS,
+    S_HANDS    = CardStacks::HANDS
+  };
+
+  // p prefix stands for "potential", these arrays are used to calculate
+  // what each campaigns *could* be worth if players played every card
+  // in their hands
+
+  float ppoints[GC.NUM_TEAMS][GC.NUM_COLORS];
+  float pinvestments[GC.NUM_TEAMS][GC.NUM_COLORS];
+  float pcounts[GC.NUM_TEAMS][GC.NUM_COLORS];
+
+  // stores the team number of the current player
+  int whoseteam = GC.playerInfo[whoseturn].team;
+  
+  // stores the opposing team number
+  int oteam = whoseteam == GC.HOMETEAM ? GC.AWAYTEAM : GC.HOMETEAM;
+  
+  // a conservative guess at how many turns each player has left
+  float turnsleft = stacks.stackisum[S_DRAWPILE] / (float)GC.NUM_PLAYERS;
+
+  // *potential* value of each campaign to the current player
+  // used to determine which pile to draw from at the end of
+  // the turn
+  float playeval[GC.NUM_COLORS];
+
+  // get current values for this->points, investments, counts
+  this->examineCampaigns();
+
+  // cycle through colors
+  for(int color = 0; color < GC.NUM_COLORS; ++color)
+  {
+    // kicker index in current color
+    int kick  = Card(color,GC.KICKER).getIndex();
+
+    // last card index in current color
+    int last  = Card(color,GC.CARD_MAX).getIndex(); 
+
+    // set potential scores = current scores
+    for(int team = 0; team < GC.NUM_TEAMS; ++team)
+    {
+      ppoints[team][color]      = points[team][color];
+      pinvestments[team][color] = investments[team][color];
+      pcounts[team][color]      = counts[team][color];
+    }
+    
+    // lowest playable card in current players hand in current color
+    // takes into account the number of turns left
+    int lowcard = GC.NONE;
+
+    // lowest playable card for current team
+    int lowestcard = GC.NONE;
+
+    // lowest playable card for the opposing team
+    int olowestcard = GC.NONE;
+    
+    // add to potential scores looking at each players hand
+    for(int player = 0; player < GC.NUM_PLAYERS; ++player)
+    {
+      int team = GC.playerInfo[player].team;
+
+      int firstindex;
+      if (stacks.isPlayable(team,color,firstindex))
+      {
+        // shorter names
+        float & p = ppoints[team][color];
+        float & i = pinvestments[team][color];
+        float & c = pcounts[team][color];
+      
+        i = c = stacks.getnum(S_CAMPAIGNS + team, kick);
+        p = 0;
+  
+        float sc = c; // starting c value
+
+        for(int cardno = last; cardno >= firstindex; --cardno)
+        {
+          if (c - sc >= turnsleft) break;
+          float dist = stacks.getnum(S_HANDS + player, cardno);
+          if (dist > 1.0 && cardno != kick)
+            dist = 1.0;
+          float cardpoints = GC.cardInfo[cardno].card.points;
+          p += dist * cardpoints;
+          c += dist;
+          if (player == whoseturn) lowcard = cardno;
+        }
+        
+        if (team == whoseteam)
+          lowestcard = firstindex;
+        else
+          olowestcard = firstindex;        
+      }
+    }
+
+    // potential campaign value for current color and current player
+    float pscore = getScore(ppoints[whoseteam][color], 
+                            pinvestments[whoseteam][color],
+                            pcounts[whoseteam][color]);
+    
+    // current campaign value for current color and current player
+    float cscore = getScore(points[whoseteam][color], 
+                            investments[whoseteam][color],
+                            counts[whoseteam][color]);            
+
+    // opponent's potential campaign value
+    float epscore = getScore(ppoints[oteam][color],
+                             pinvestments[oteam][color],
+                             pcounts[oteam][color]);
+
+    // opponents's current campaign value
+    float ecscore = getScore(points[oteam][color],
+                             investments[oteam][color],
+                             counts[oteam][color]);        
+
+
+    // Find a card to discard. (chooses the lowest possible one)
+    float found = 0;
+    int dropcard = GC.NONE;
+    for(int cardno = kick; cardno <= last; ++cardno)
+    {
+      found += stacks.getnum(S_HANDS + whoseturn, cardno);
+      if (found >= 1.0)
+      {
+        dropcard = cardno;
+        break;
+      }  
+    };
+    
+    // evaluate the drop card and add it to the priority queue
+    if (dropcard != GC.NONE)
+    {
+      int droppoints = GC.cardInfo[dropcard].card.points;
+      Turn turn;
+      turn.move = GC.DROP;
+      turn.card1 = Card(color,droppoints);
+      
+      // if the drop card is not playable by opponent
+      if (olowestcard != GC.NONE && dropcard < olowestcard) 
+        turn.eval = 0;
+      else  
+        turn.eval = ((cscore - pscore) + (ecscore - epscore)) / 2;
+      moves.push(turn);
+    }    
+    
+    playeval[color] = -100000000;
+    
+    // if a play is possible
+    if (lowcard != GC.NONE)
+    {
+      // Find a card to play, or two cards to pass
+      int playcard[3];
+      int playcount = 0;
+
+      found = 0.0;
+      for(int cardno = lowcard; cardno <= last; ++cardno)
+      {
+        found += stacks.getnum(S_HANDS + whoseturn, cardno);
+        if (found >= 1.0)
+        {
+          if (cardno == kick)
+          {
+            playcard[0] = playcard[1] = playcard[2] = cardno;
+            playcount = (int)floor(found);
+            found = 0.0;
+          }
+          else
+          { 
+            playcard[playcount] = cardno;
+            if (++playcount >= 3) break; else found = 0;
+          }  
+        }  
+      }
+   
+      // evaluate the play (or pass). big potential increase in score is good,
+      // big gap between cards is bad
+      playeval[color] = pscore - cscore;
+      float gapsize = playcard[0] - lowestcard;
+      if (playeval[color] > 0)
+        playeval[color] *= 2 / (2 + gapsize);
+    
+      // add the play card(s) to the priority queue
+      if (playcount >= 1)
+      {
+        Turn turn;
+      
+        if (playcount >= 3 && stacks.stackisum[S_HANDS + whoseturn] > 7)
+        {
+          turn.move = GC.PASS;
+          turn.card1 = GC.cardInfo[playcard[0]].card;
+          turn.card2 = GC.cardInfo[playcard[2]].card;
+        }
+      
+        turn.move = GC.PLAY;
+        turn.card1 = Card(color,GC.cardInfo[playcard[0]].card.points);
+        turn.eval = playeval[color];
+        
+        moves.push(turn);
+      }
+    }
+  }; // for color
+
+  // find the best pile to pick up from at the end of the turn
+  this->pickup = Card();
+  
+  // find potential value of a card from the drawpile
+  float value = 0; 
+  for(int cardno = 0; cardno < GC.NUM_UCARDS; ++cardno)
+  {
+    Card c = GC.cardInfo[cardno].card;
+    int minvalue = stacks.campaignmin[whoseteam][c.color];
+    if (GC.KICKER < c.points && c.points <= minvalue)
+      value += 0;
+    else if (c.points == GC.KICKER)
+      value += GC.CARD_MAX * playeval[c.color] 
+               * stacks.getnum(S_DRAWPILE,cardno);
+    else if (c.points > minvalue)
+      value += c.points * playeval[c.color] * stacks.getnum(S_DRAWPILE,cardno);
+  }
+  value /= stacks.stackisum[S_DRAWPILE];
+  
+  // compare drawpile value to each of the discard piles
+  for(int color=0; color<GC.NUM_COLORS; ++color)
+  {
+    stacks.campaignmin[whoseteam][color];
+    double nvalue = 0;
+    int discardtop = stacks.discardTop(color);
+    if (discardtop != GC.NONE)
+    {
+      int points = GC.cardInfo[discardtop].card.points;
+      if (points == GC.KICKER)
+        nvalue = GC.CARD_MAX;
+      else
+        nvalue = points;
+      nvalue += playeval[color];
+      if (nvalue > value)
+      {
+        value = nvalue;
+        this->pickup = GC.cardInfo[discardtop].card; 
+      }
+    }
+  }  
+};
+
+Game::Game(Game const & g, Turn & t)
+{
+  // copy relevant variables from game g, and make changes
+  // based on what is done in turn t
+  // also, pickup information into turn t
+  
+  stacks = g.stacks;
+  whoseturn = (g.whoseturn + 1) % GC.NUM_PLAYERS;
+  parent = &g;
+  
+  // give constants shorter name
+  enum
+  { 
+    S_HANDS = CardStacks::HANDS,
+    S_DISCARDS = CardStacks::DISCARD,
+    S_DRAWPILE = CardStacks::DRAWPILE,
+    S_CAMPAIGNS = CardStacks::CAMPAIGNS
+  };
+
+  // if the last move is a pass...
+  if (t.move == GC.PASS)
+  {
+    // find the partner
+    int partner =  g.whoseturn == GC.HOME  ? GC.HOMEP :
+                  (g.whoseturn == GC.HOMEP ? GC.HOME  :
+                  (g.whoseturn == GC.AWAY  ? GC.AWAYP : GC.AWAY));
+    
+    // pass the cards
+    stacks.passCard(t.card1.getIndex(), S_HANDS + g.whoseturn,
+                    S_HANDS + partner, true);
+
+    stacks.passCard(t.card2.getIndex(), S_HANDS + g.whoseturn,
+                    S_HANDS + partner, true);
+  }
+  else
+  {
+    if (t.move == GC.PLAY) // last move is a play
+    {
+      int team = GC.playerInfo[g.whoseturn].team;
+      
+      // put card on campaign stack
+      stacks.passCard(t.card1.getIndex(), S_HANDS + g.whoseturn,
+                      S_CAMPAIGNS + team, true);
+    }
+    else if (t.move == GC.DROP)
+    {    
+      // put card on discard pile
+      stacks.passCard(t.card1.getIndex(), S_HANDS + g.whoseturn,
+                      S_DISCARDS, true);
+    }
+    
+    // decide whether to pick up from the draw pile or discard pile
+    // can't pick up a card that was just discarded
+    if (g.pickup && !(t.move == GC.DROP && g.pickup.color == t.card1.color))
+    {
+      int top = stacks.discardTop(g.pickup.color);
+      assert(top == g.pickup.getIndex());
+      t.card2 = g.pickup;
+      stacks.passCard(top, S_DISCARDS, S_HANDS + g.whoseturn);
+    }
+    else
+    {
+      // draw a random card from the drawpile
+      t.move |= GC.RANDOMDRAW;
+      stacks.passCard(GC.NONE, S_DRAWPILE, S_HANDS + g.whoseturn);
+    }  
+  }
+}
+
+float Game::eval()
+{
+  float sum = 0;
+  for(int team = 0; team < GC.NUM_TEAMS; ++team)
+  for(int color = 0; color < GC.NUM_COLORS; ++color)
+  {
+    float mult = team == GC.HOMETEAM ? 1 : -1;
+    sum += getScore(points[team][color], investments[team][color],
+                    counts[team][color]) * mult;
+  }
+  return sum;
+}  
+  
+
+bool const Game::isknown[CardStacks::NUM_STACKS] = 
 {
   false,   // DRAWPILE
   true,    // DISCARD
@@ -372,413 +867,46 @@ bool const Game::isknown[ProbStacks::NUM_STACKS] =
   false    // HANDS + AWAYP
 };
 
-  void Game::countCards()
+float inline Game::getScore(float points, float investments, float num)
+{
+  if (fequals(num, (float)0.0)) return 0;
+  float bonus = num < (float)8.0 ? 0 : 20;
+  return (investments + 1) * (points - 20) + bonus;
+}
+
+void Game::examineCampaigns()
+{
+  enum
   {
-    ProbSkew s;
-    ProbStacks::ProbMatrix & skew = s.skew;
-   
-    enum
-    {
-      S_DRAWPILE  = ProbStacks::DRAWPILE,
-      S_DISCARD   = ProbStacks::DISCARD,
-      S_CAMPAIGNS = ProbStacks::CAMPAIGNS,
-      S_HANDS     = ProbStacks::HANDS
-    };
-   
-    // estimate by looking at players last moves
-    
-    int players[] =
-    { 
-      GC.HOMEP,
-      GC.AWAY,
-      GC.AWAYP
-    };
-    
-    for(int i = 0; i < DIM(players); ++i)
-    {
-      int p = players[i];
-      int team = GC.playerInfo[p].team;
-      Turn turn = lastturns[p];
-      int move = turn.move & ~GC.RANDOMDRAW;
-      
-      if (move == GC.PLAY)
-      {
-        // very unlikely they have any lower cards of the campaign they just
-        // played, therefore lower probabilities of lower cards
-        int s = Card(turn.card1.color, GC.KICKER).getIndex();
-        int e = turn.card1.getIndex();
-        for(int cardno = s; cardno < e; ++cardno)
-          skew[S_HANDS + p][cardno] -= 5.0;
-        
-        // likewise, raise slightly the probability that they have higher cards
-        int l = Card(turn.card1.color, GC.CARD_MAX).getIndex();
-        for(int cardno = e; cardno <= l; ++cardno)
-          skew[S_HANDS + p][cardno] += 0.8;
-      }
-      else if (move == GC.DROP)
-      {
-        // If they dropped a card, they don't have many others of the same campaign
-        
-        int s = Card(turn.card1.color, GC.KICKER).getIndex();
-        int e = turn.card1.getIndex();
-        int l = Card(turn.card1.color, GC.KICKER).getIndex();
-        for(int cardno = s; cardno <= l; ++cardno)
-          skew[S_HANDS + p][cardno] -= (cardno == e) ? 2.0 : 1.0;
-      }
-      else if (move == GC.PASS && turn.card1 && turn.card2)
-      {
-        if (turn.card1.color == turn.card2.color)
-        {
-          // passed two cards of the same color.
-          // raise the probability that this person has higher cards of the same campaign
-          // lower the probability that the person has the cards that he just passed
-          
-          int s = Card(turn.card1.color, GC.KICKER).getIndex();
-          int e = Card(turn.card1.color, GC.CARD_MAX).getIndex();
-          int moved1 = turn.card1.getIndex();
-          int moved2 = turn.card2.getIndex();
+    S_DRAWPILE = CardStacks::DRAWPILE,
+    S_DISCARD  = CardStacks::DISCARD,
+    S_CAMPAIGNS = CardStacks::CAMPAIGNS,
+    S_HANDS    = CardStacks::HANDS
+  };
 
-          bool decrease = true;   
-          for(int c = s; c <= e; ++c)
-          {                       
-            if (c == moved1 || c == moved2)
-            {                     
-              skew[S_HANDS + p][c] -= 2;
-              decrease = false;   
-            }                     
-            else if (decrease)        
-              skew[S_HANDS + p][c] -= 0.5;
-            else
-              skew[S_HANDS + p][c] += 1.0;
-          }
-        }
-        else
-        {
-          // passed two random cards, so slightly lower the probability that
-          // partner has other cards of these colors
-          
-          int s1 = Card(turn.card1.color, GC.KICKER).getIndex();
-          int e1 = Card(turn.card1.color, GC.CARD_MAX).getIndex();
-          int s2 = Card(turn.card2.color, GC.KICKER).getIndex();
-          for(int c1 = s1; c1 <= e1; ++c1)
-          {
-            skew[S_HANDS + p][c1] -= 0.5;
-            skew[S_HANDS + p][c1+s2-s1] -= 0.5;
-          }
-        }
-      }
-    }
-        
-    stacks.applySkew(s,isknown);
-  }  
-
-  float inline Game::getScore(float points, float investments, float num)
+  for(int team = 0; team < GC.NUM_TEAMS; ++team)
   {
-    if (fequals(num, (float)0.0)) return 0;
-    float bonus = num < (float)8.0 ? 0 : 20;
-    return (investments + 1) * (points - 20) + bonus;
-  }
-  
-  void Game::calcScores()
-  {
-    enum
-    {
-      S_DRAWPILE = ProbStacks::DRAWPILE,
-      S_DISCARD  = ProbStacks::DISCARD,
-      S_CAMPAIGNS = ProbStacks::CAMPAIGNS,
-      S_HANDS    = ProbStacks::HANDS
-    };
-
-    for(int team = 0; team < GC.NUM_TEAMS; ++team)
-    {
-      for(int color = 0; color < GC.NUM_COLORS; ++color)
-      {
-        float & p = points[team][color];
-        float & i = investments[team][color];
-        float & c = counts[team][color];
-
-        int kickindex = Card(color,GC.KICKER).getIndex();
-        int lastindex = Card(color,GC.CARD_MAX).getIndex();        
-        
-        i = c = stacks.getProb(S_CAMPAIGNS + team, kickindex);
-        p = 0;
-       
-        for(int cardno = lastindex; cardno > kickindex; ++cardno)
-        {
-          float prob = stacks.getProb(S_CAMPAIGNS + team, cardno);
-          float cardpoints = GC.cardInfo[cardno].card.points;
-          p += prob * cardpoints;
-          c += prob;          
-        }
-      }
-    }
-  }
-  
-  void Game::findSuccessors(int me, int depth)
-  {
-    this->depth = depth;
-    this->me = me;
-    
-    enum
-    {
-      S_DRAWPILE = ProbStacks::DRAWPILE,
-      S_DISCARD  = ProbStacks::DISCARD,
-      S_CAMPAIGNS = ProbStacks::CAMPAIGNS,
-      S_HANDS    = ProbStacks::HANDS
-    };
-
-    float ppoints[GC.NUM_TEAMS][GC.NUM_COLORS];
-    float pinvestments[GC.NUM_TEAMS][GC.NUM_COLORS];
-    float pcounts[GC.NUM_TEAMS][GC.NUM_COLORS];
-
-    int myteam = GC.playerInfo[me].team;
-    int oteam = myteam == GC.HOMETEAM ? GC.AWAYTEAM : GC.HOMETEAM;
-    float turnsleft = stacks.stackisum[S_DRAWPILE] / (float)GC.NUM_PLAYERS;
-
-    float playeval[GC.NUM_COLORS];
-
-    // cycle through colors
     for(int color = 0; color < GC.NUM_COLORS; ++color)
     {
-      
-      // find potential scores
-      for(int team = 0; team < GC.NUM_TEAMS; ++team)
-      {
-        ppoints[team][color]      = points[team][color];
-        pinvestments[team][color] = investments[team][color];
-        pcounts[team][color]      = counts[team][color];
-      }
-      
-      int lastcard = GC.NONE;
-      for(int player = 0; player < GC.NUM_PLAYERS; ++player)
-      {
-        int team = GC.playerInfo[player].team;
-        
-        float & p = ppoints[team][color];
-        float & i = pinvestments[team][color];
-        float & c = pcounts[team][color];
-        
-        int firstindex = Card(color,stacks.campaignmin[team][color]).getIndex();
-        int kickindex  = Card(color,GC.KICKER).getIndex();
-        int lastindex  = Card(color,GC.CARD_MAX).getIndex();        
-        
-        i = c = stacks.getProb(S_CAMPAIGNS + team, kickindex);
-        p = 0;
-       
-        if (firstindex != kickindex) ++firstindex;
-        
-        float scount = c;
-        for(int cardno = lastindex; cardno >= firstindex; ++cardno)
-        {
-          if (c - scount >= turnsleft) break;
-          float prob = stacks.getProb(S_HANDS + player, cardno);
-          if (prob > (float)1 && cardno != kickindex)
-            prob = 1;
-          float cardpoints = GC.cardInfo[cardno].card.points;
-          p += prob * cardpoints;
-          c += prob;
-          if (player == me) lastcard = cardno;
-        }
-      }
+      float & p = points[team][color];
+      float & i = investments[team][color];
+      float & c = counts[team][color];
 
-      int firstindex = Card(color,stacks.campaignmin[myteam][color]).getIndex();
-      int ofirstindex = Card(color,stacks.campaignmin[oteam][color]).getIndex();
-      int kickindex  = Card(color,GC.KICKER).getIndex();
-      int lastindex  = Card(color,GC.CARD_MAX).getIndex(); 
-
-      // Find a card to discard. (Currently chooses the lowest possible one)
-      float found = 0;
-      int dropcard = GC.NONE;
-      for(int cardno = kickindex; cardno <= lastindex; ++cardno)
-      {
-        found += stacks.getProb(S_HANDS + me, cardno);
-        if (found >= 1)
-        {
-          dropcard = cardno;
-          break;
-        }  
-      };
+      int kickindex = Card(color,GC.KICKER).getIndex();
+      int lastindex = Card(color,GC.CARD_MAX).getIndex();        
       
-      // Find a card to play, or two cards to pass
-      int playcard[3];
-      int playcount = 0;
-      if (lastcard != GC.NONE)
+      i = c = stacks.getnum(S_CAMPAIGNS + team, kickindex);
+      p = 0;
+     
+      for(int cardno = lastindex; cardno > kickindex; --cardno)
       {
-        found = 0;
-        for(int cardno = lastcard; cardno < lastindex; ++cardno)
-        {
-          found += stacks.getProb(S_HANDS + me, cardno);
-          if (found >= 1)
-          {
-            if (cardno == kickindex)
-            {
-              playcard[0] = playcard[1] = playcard[2] = cardno;
-              playcount = (int)floor(found);
-              found = 0;
-            }
-            else
-            { 
-              playcard[playcount++] = cardno;
-              if (playcount >= 3) break; else found = 0;
-            }  
-          }  
-        }
-      }  
-      
-      // my potential campaign value
-      float pscore = getScore(ppoints[myteam][color],pinvestments[myteam][color],
-                              pcounts[myteam][color]);
-      
-      // my campaign value
-      float cscore = getScore(points[myteam][color],investments[myteam][color],
-                              counts[myteam][color]);            
-
-      // enemies potential campaign value
-      float epscore = getScore(ppoints[oteam][color],pinvestments[oteam][color],
-                              pcounts[oteam][color]);
-
-      // enemy's campaign value
-      float ecscore = getScore(points[oteam][color],investments[oteam][color],
-                              counts[oteam][color]);        
-      
-      // evaluate the play (or pass)
-      playeval[color] = pscore - cscore;
-      float gapsize = playcard[0] - firstindex;
-      if (playeval[color] > 0)
-        playeval[color] *= 2 / (2 + gapsize);
-      
-      // add the play card(s) to the priority queue
-      if (playcount >= 1)
-      {
-        Turn turn;
-        
-        if (playcount >= 3 && stacks.stackisum[S_HANDS + me] > 7)
-        {
-          turn.move = GC.PASS;
-          turn.card1 = GC.cardInfo[playcard[0]].card;
-          turn.card2 = GC.cardInfo[playcard[2]].card;
-        }
-        
-        turn.move = GC.PLAY;
-        turn.card1 = Card(color,GC.cardInfo[playcard[0]].card.points);
-        turn.eval = playeval[color];
-          
-        moves.push(turn);
-      }
-      
-      // evaluate the drop card and add it to the priority queue
-      if (dropcard != GC.NONE)
-      {
-        int droppoints = GC.cardInfo[dropcard].card.points;
-        
-        Turn turn;
-        turn.move = GC.DROP;
-        turn.card1 = Card(color,droppoints);
-        
-        if (kickindex < dropcard && dropcard <= ofirstindex) 
-          turn.eval = 0;
-        else  
-          turn.eval = ((cscore - pscore) + (ecscore - epscore)) / 2;
-        moves.push(turn);
-      }
-    }; // for color
-    
-    // find the best pile to pick up from at the end of the turn
-    this->pickup = Card();
-    
-    // find potential value of a card from the drawpile
-    float value = 0; 
-    for(int cardno = 0; cardno < GC.NUM_UCARDS; ++cardno)
-    {
-      Card c = GC.cardInfo[cardno].card;
-      int minvalue = stacks.campaignmin[myteam][c.color];
-      if (GC.KICKER < c.points && c.points <= minvalue)
-        value += 0;
-      else if (c.points == GC.KICKER)
-        value += GC.CARD_MAX * playeval[c.color] * stacks.getProb(S_DRAWPILE,cardno);
-      else if (c.points > minvalue)
-        value += c.points * playeval[c.color] * stacks.getProb(S_DRAWPILE,cardno);
-    }
-    value /= stacks.stackisum[S_DRAWPILE];
-    
-    // compare drawpile value to each of the discard piles
-    for(int color=0; color<GC.NUM_COLORS; ++color)
-    {
-      stacks.campaignmin[myteam][color];
-      double nvalue = 0;
-      int discardtop = stacks.discardTop(color);
-      if (discardtop != GC.NONE)
-      {
-        int points = GC.cardInfo[discardtop].card.points;
-        if (points == GC.KICKER)
-          nvalue = GC.CARD_MAX;
-        else
-          nvalue = points;
-        nvalue *= playeval[color];
-        if (nvalue > value)
-        {
-          value = nvalue;
-          this->pickup = GC.cardInfo[discardtop].card; 
-        }
-      }
-    }  
-  };
-  
-  Game::Game(Game const & g, Turn & t)
-  {
-    this->parent = &g;
-    
-    enum
-    { 
-      S_HANDS = ProbStacks::HANDS,
-      S_DISCARDS = ProbStacks::DISCARD,
-      S_DRAWPILE = ProbStacks::DRAWPILE,
-      S_CAMPAIGNS = ProbStacks::CAMPAIGNS
-    };
-    
-    if (t.move == GC.PASS)
-    {
-      int partner =  g.me == GC.HOME  ? GC.HOMEP :
-                    (g.me == GC.HOMEP ? GC.HOME  :
-                    (g.me == GC.AWAY  ? GC.AWAYP : GC.AWAY));
-      stacks.passCard(t.card1.getIndex(), S_HANDS + g.me, S_HANDS + partner);
-    }
-    else
-    {
-      if (t.move == GC.PLAY)
-      {
-        int team = GC.playerInfo[g.me].team;
-        stacks.passCard(t.card1.getIndex(), S_HANDS + g.me, S_CAMPAIGNS + team);
-      }
-      else if (t.move == GC.DROP)
-      {    
-        stacks.passCard(t.card1.getIndex(), S_HANDS + g.me, S_DISCARDS);
-      }
-      
-      if (t.card2)
-      {
-        t.move |= GC.RANDOMDRAW;
-        stacks.passCard(GC.NONE, S_DRAWPILE, S_HANDS + g.me);
-      }
-      else // t.card2
-      {
-        int top = stacks.discardTop(t.card2.color);
-        assert(top != GC.NONE);
-        t.card2.points = GC.cardInfo[top].card.points;
-        stacks.passCard(t.card2.getIndex(), S_DISCARDS, S_HANDS + g.me);
+        float dist = stacks.getnum(S_CAMPAIGNS + team, cardno);
+        float cardpoints = GC.cardInfo[cardno].card.points;
+        p += dist * cardpoints;
+        c += dist;          
       }
     }
   }
+}
   
-  int Game::eval()
-  {
-    float sum = 0;
-    for(int team = 0; team < GC.NUM_TEAMS; ++team)
-    for(int color = 0; team < GC.NUM_COLORS; ++color)
-    {
-      float mult = team == GC.HOMETEAM ? 1 : -1;
-      sum += getScore(points[team][color], investments[team][color], counts[team][color]);
-    }
-    return sum;
-  }  
   
