@@ -8,6 +8,7 @@
 using std::map;
 using std::string;
 class Card;
+class CardInfo;
 
 class GameConstants // constants which are used all over the place
 {
@@ -30,6 +31,7 @@ public:
   static const Card cardcodes[];
   static const size_t cardcodes_s;
   static const size_t cardcodes_e;
+  static const CardInfo DeckInfo[];
   
   //Card allcards[(CARD_MAX - CARD_MIN + 2) * NUM_COLORS];
   
@@ -66,5 +68,7 @@ public:
   static char GetShortColor(int c);
   static char GetValue(int v);  
 };
+
+
 
 #endif

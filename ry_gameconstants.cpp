@@ -195,5 +195,59 @@ const Card GameConstants::cardcodes[] =
   Card( NONE,  0 ),        // 0x7A 'z'
 };
 
+const CardInfo GameConstants::DeckInfo[] = 
+{
+  CardInfo(Card(RED,    KICKER), 1),    // 0 
+  CardInfo(Card(RED,    2     ), 2),    // 1 
+  CardInfo(Card(RED,    3     ), 2),    // 2 
+  CardInfo(Card(RED,    4     ), 2),    // 3 
+  CardInfo(Card(RED,    5     ), 1),    // 4 
+  CardInfo(Card(RED,    6     ), 1),    // 5 
+  CardInfo(Card(RED,    7     ), 1),    // 6 
+  CardInfo(Card(RED,    8     ), 1),    // 7 
+  CardInfo(Card(RED,    9     ), 1),    // 8 
+  CardInfo(Card(RED,    10    ), 1),    // 9 
+  CardInfo(Card(YELLOW, KICKER), 1),    // 10 
+  CardInfo(Card(YELLOW, 2     ), 2),    // 11 
+  CardInfo(Card(YELLOW, 3     ), 2),    // 12 
+  CardInfo(Card(YELLOW, 4     ), 2),    // 13 
+  CardInfo(Card(YELLOW, 5     ), 1),    // 14 
+  CardInfo(Card(YELLOW, 6     ), 1),    // 15 
+  CardInfo(Card(YELLOW, 7     ), 1),    // 16 
+  CardInfo(Card(YELLOW, 8     ), 1),    // 17 
+  CardInfo(Card(YELLOW, 9     ), 1),    // 18 
+  CardInfo(Card(YELLOW, 10    ), 1),    // 19 
+  CardInfo(Card(GREEN,  KICKER), 1),    // 20 
+  CardInfo(Card(GREEN,  2     ), 2),    // 21 
+  CardInfo(Card(GREEN,  3     ), 2),    // 22 
+  CardInfo(Card(GREEN,  4     ), 2),    // 23 
+  CardInfo(Card(GREEN,  5     ), 1),    // 24 
+  CardInfo(Card(GREEN,  6     ), 1),    // 25 
+  CardInfo(Card(GREEN,  7     ), 1),    // 26 
+  CardInfo(Card(GREEN,  8     ), 1),    // 27 
+  CardInfo(Card(GREEN,  9     ), 1),    // 28 
+  CardInfo(Card(GREEN,  10    ), 1),    // 29 
+  CardInfo(Card(BLUE,   KICKER), 1),    // 30 
+  CardInfo(Card(BLUE,   2     ), 2),    // 31 
+  CardInfo(Card(BLUE,   3     ), 2),    // 32 
+  CardInfo(Card(BLUE,   4     ), 2),    // 33 
+  CardInfo(Card(BLUE,   5     ), 1),    // 34 
+  CardInfo(Card(BLUE,   6     ), 1),    // 35 
+  CardInfo(Card(BLUE,   7     ), 1),    // 36 
+  CardInfo(Card(BLUE,   8     ), 1),    // 37 
+  CardInfo(Card(BLUE,   9     ), 1),    // 38 
+  CardInfo(Card(BLUE,   10    ), 1),    // 39 
+  CardInfo(Card(WHITE,  KICKER), 1),    // 40 
+  CardInfo(Card(WHITE,  2     ), 2),    // 41 
+  CardInfo(Card(WHITE,  3     ), 2),    // 42 
+  CardInfo(Card(WHITE,  4     ), 2),    // 43 
+  CardInfo(Card(WHITE,  5     ), 1),    // 44 
+  CardInfo(Card(WHITE,  6     ), 1),    // 45 
+  CardInfo(Card(WHITE,  7     ), 1),    // 46 
+  CardInfo(Card(WHITE,  8     ), 1),    // 47 
+  CardInfo(Card(WHITE,  9     ), 1),    // 48 
+  CardInfo(Card(WHITE,  10    ), 1),    // 49 
+};
+
 const size_t GameConstants::cardcodes_s = 0x30;
 const size_t GameConstants::cardcodes_e = 0x30 + DIM(GameConstants::cardcodes);
