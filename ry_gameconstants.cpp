@@ -1,9 +1,15 @@
 #include "ry_gameconstants.h"
 #include "ry_card.h"
 
-// FAST & FRIENDLY GLOBAL VARIABLE
+#include <map>
+#include <string>
+#include <assert.h>
+
+using std::map;
+using std::string;
+
+// FRIENDLY GLOBAL VARIABLE
 const GameConstants GC;
-extern const GameConstants GC;
 
 const GameConstants::CardInfo GameConstants::cardInfo[NUM_UCARDS] = 
 {
@@ -46,7 +52,7 @@ const GameConstants::CardInfo GameConstants::cardInfo[NUM_UCARDS] =
   CardInfo( Card(BLUE,7),        1 ),  // 36 
   CardInfo( Card(BLUE,8),        1 ),  // 37 
   CardInfo( Card(BLUE,9),        1 ),  // 38 
-  CardInfo( Card(BLUE,1),        1 ),  // 39 
+  CardInfo( Card(BLUE,10),       1 ),  // 39 
   CardInfo( Card(WHITE,KICKER),  3 ),  // 40 
   CardInfo( Card(WHITE,2),       2 ),  // 41 
   CardInfo( Card(WHITE,3),       2 ),  // 42 
@@ -64,7 +70,7 @@ const GameConstants::ColorInfo GameConstants::colorInfo[NUM_COLORS] =
   { 'R', "red"    },
   { 'Y', "yellow" },
   { 'G', "green"  },
-  { 'B', "blue "  },
+  { 'B', "blue"   },
   { 'W', "white"  }
 };
 
@@ -78,22 +84,25 @@ const GameConstants::PlayerInfo GameConstants::playerInfo[NUM_PLAYERS] =
 
 char GameConstants::pointSymbol(int p)
 {
-  if (0 <= p && p <= 9)
+  if (CARD_MIN <= p && p <= 9)
     return p + 0x30;
   else if (p == GameConstants::KICKER)
     return 'K';
   else if (p == 10)
     return 'T';
-  else  
-    return 0;  
+  else
+  {
+    assert(false);
+    return 0;
+  }  
 }
 
 GameConstants::GameConstants()
 {
   // initialize nonstatic lookup tables
  
-  cardChar[pointSymbol(KICKER)].points = KICKER;
-  for(int i = CARD_MIN; i < CARD_MAX; ++i)
+  cardChar[pointSymbol(KICKER) - CARDCHAR_S].points = KICKER;
+  for(int i = CARD_MIN; i <= CARD_MAX; ++i)
     cardChar[pointSymbol(i) - CARDCHAR_S].points = i;
   for(int i = 0; i < NUM_COLORS; ++i)
     cardChar[colorInfo[i].symbol - CARDCHAR_S].color = i;
