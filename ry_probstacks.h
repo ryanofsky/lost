@@ -2,21 +2,30 @@
 #define ry_probstacks_h
 
 #include "ry_gameconstants.h"
+#include <queue>
+
+
+using std::priority_queue;
+
+class ProbSkew;
 
 class ProbStacks
 {
+public:
   enum { DRAWPILE = 0 };
   enum { DISCARD = 1 };
   enum { CAMPAIGNS = 2 };
   enum { HANDS = CAMPAIGNS + GameConstants::NUM_TEAMS };
   enum { NUM_STACKS = HANDS + GameConstants::NUM_PLAYERS };
 
+  typedef float ProbMatrix[NUM_STACKS][GameConstants::NUM_UCARDS];
   typedef bool const IsKnown[NUM_STACKS];
 
-  float prob[NUM_STACKS][GameConstants::NUM_UCARDS];
+  ProbMatrix prob;
   float stacksum[NUM_STACKS];
   float stackisum[NUM_STACKS];
-  
+  int discardOrder[GameConstants::NUM_CARDS]; // card indices
+  int discardSize[GameConstants::NUM_COLORS]; // size of discard piles
   
   struct DiscardNode
   {
@@ -31,43 +40,26 @@ class ProbStacks
     {
       return this->ordinal < dn.ordinal;
     }
-  }
-  
-  priority_queue<DiscardNode> discardq[GameConstants::NUM_COLORS];
+  };
   
   int campaignmin[GameConstants::NUM_TEAMS][GameConstants::NUM_COLORS];
   
   void clear();
   void addCard(int stack, int card);
   void setNumCards(int stack, int num);
-  void normalize(const IsKnown isknown);
+  void normalize(IsKnown isknown);
   void applySkew(ProbSkew & ps, IsKnown isknown);
-  void passCard(int cardno, int source, int dest)
-  {
-    --stackisum[source];
-    ++stackisum[dest];
-    float maxmove = 1.0;
-    if (cardno != GC.NONE)
-    {
-      maxmove = 
-        min
-        (
-          min((float) 1, prob[source][cardno]),    
-          (float)GC.cardInfo[cardno].freq - prob[dest][cardno])
-        );
-      
-      prob[source][cardno] -= maxmove;
-      prob[dest][cardno] += maxmove;
-    }
-    stacksum[source] -= maxmove;
-    stacksum[dest] += maxmove;  
-  }
+  void passCard(int cardno, int source, int dest, bool fractional = false);
+  float getProb(int stack, int card);
+  int discardTop(int color);
 };
 
 class ProbSkew
 {
-  float skew[ProbStacks::NUM_STACKS][GameConstants::NUM_UCARDS];
-  ProbTransform();
+public:
+  ProbStacks::ProbMatrix skew;
+  ProbSkew();
+  void ProbTransform();
 };
 
 #endif
