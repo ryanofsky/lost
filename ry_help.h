@@ -11,13 +11,16 @@
 #include <iostream>
 #include <string>
 #include <map>
-#include <limits>
+//#include <limits>
 
 using std::cerr;
 using std::endl;
 using std::string;
 using std::map;
-using std::numeric_limits;
+//using std::numeric_limits;
+
+// gcc does not currently support numeric_limits
+const double EPSILON = 0.00001;
 
 // return true if c is in [a,b]
 template<typename T>
@@ -77,14 +80,14 @@ string inline string_slice(string str, int start, int end)
 template<typename T>
 double fequals(T a, T b)
 {
-  return (a>b ? (a-b) : (b-a)) <= numeric_limits<T>::epsilon();
+  return (a>b ? (a-b) : (b-a)) <= EPSILON;
 }
 
 // return true for two floating points a,b if a <= b
 template<typename T>
 double lessequals(double a, double b)
 {
-  return a <= b + numeric_limits<T>::epsilon();
+  return a <= b + EPSILON;
 }
 
 // returns the size of a single dimensionalal, not dynamically allocated array
