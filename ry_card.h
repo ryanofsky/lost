@@ -22,16 +22,26 @@ public:
     color(color_), points(points_) { }
   
   void describe();
-
+  
   static bool Parse(char c1, char c2, Card & c);
   int getIndex();
-
-  operator bool ()
+  
+  operator bool()
   {
     return color != GameConstants::NONE;
   }
+  
 
+};
 
+struct CardInfo
+{
+  Card card;
+  short freq;
+ 
+  CardInfo(Card card_, short freq_)
+    : card(card_), freq(freq_)
+  { }
 };
 
 class Stack // abstract class representing a stack of cards
