@@ -73,7 +73,6 @@ void Game::parse(const string data)
     {
       field_start = i;
       hyphens = 0;
-      lastmove = 0;
     }
 
     if (escaped) // test for escape characters (only "\n" is recognized)
@@ -156,11 +155,11 @@ void Game::parse(const string data)
               {
                 currentturn = &lastturns[whichplayer];
                 currentmode = SETTURN;
+                lastmove = 0;
               }
             }
           break;
         }
-        if (currentmode == COMPLAIN) errormsg = "Unexpected";
       }
       else // end of normal field (is_sep && !is_colon)
       {
@@ -195,27 +194,26 @@ void Game::parse(const string data)
             havecard = i - field_start == 2 && Card::Parse(str[field_start], str[field_start+1],c);
             fend = hyphens > 0 ? hyphen[0] : i;
             
-            whichmove;
             if (!map_get(GC.moves, string_slice(data, field_start, fend),whichmove))
-              whichmove = NONE;
+              whichmove = 0;
 
-            nomove = currentturn->move & ~RANDOMDRAW == 0;
+            nomove = ((currentturn->move & ~RANDOMDRAW) == 0);
 
             switch(lastmove)
             {
-              PLAY:
+              case PLAY:
                 if (havecard)
                 {
                   if (nomove)
                   {
                     currentturn->move |= PLAY;
                     currentturn->card1 = c;
-                    lastmove = NONE;
+                    lastmove = 0;
                   }
                   else
                     errormsg = "Unexpected";
                 }
-                else if (whichmove != NONE)
+                else if (whichmove != 0)
                 {
                   errormsg = "Campaign move must be followed by a card. Error near";
                   lastmove = whichmove;
@@ -223,16 +221,16 @@ void Game::parse(const string data)
                 else
                   errormsg = "Cruft";
               break;
-              DROP:
+              case DROP:
                 if (nomove) // haven't moved so we are adding a card to a discard pile
                 {
                   if (havecard)
                   {
                     currentturn->move = DROP;
                     currentturn->card1 = c;
-                    lastmove = NONE;
+                    lastmove = 0;
                   }
-                  else if (whichmove != NONE)
+                  else if (whichmove != 0)
                     errormsg = "Discard move must be followed by a card. Error near";
                   else
                     errormsg = "Cruft";
@@ -241,7 +239,7 @@ void Game::parse(const string data)
                 {
                   if (havecard)
                   {
-                    if (currentturn->card2.color == NONE)
+                    if (!currentturn->card2)
                     {
                       currentturn->card2 = c;
                       currentturn->move &= ~RANDOMDRAW;
@@ -249,14 +247,14 @@ void Game::parse(const string data)
                     else
                       errormsg = "Can't pick up more than one card during a turn. Error near";
                   }
-                  else if (whichmove != NONE)
+                  else if (whichmove != 0)
                     lastmove = whichmove;
                 }
               break;
-              RANDOMDRAW:
+              case RANDOMDRAW:
                 if (havecard)
                 {
-                  if (currentturn->card2.color == NONE)
+                  if (!currentturn->card2)
                   {
                     currentturn->move |= RANDOMDRAW;
                     currentturn->card2 = c;
@@ -264,16 +262,20 @@ void Game::parse(const string data)
                   else
                     errormsg = "Can't pick up more than one card during a turn. Error near";
                 }
-                else if (whichmove != NONE)
+                else if (whichmove != 0)
                   lastmove = whichmove;
                 else
                   errormsg = "Cruft";
-              PASS:
+              break;    
+              case PASS:
                 if (havecard)
                 {
-                  if (currentturn->card1.color == NONE)
+                  if (!currentturn->card1)
+                  {
+                    currentturn->move = PASS;
                     currentturn->card1 = c;
-                  else if (currentturn->card2.color == NONE)
+                  }  
+                  else if (!currentturn->card2)
                     currentturn->card2 = c;
                   else
                     errormsg = "Not allowed to pass more than two cards. Error near";
@@ -285,22 +287,21 @@ void Game::parse(const string data)
             {
               if (currentturn->move == PASS)
                 errormsg = "Not allowed to draw from the drawpile when you are passing. Error near";
-              else if (currentturn->card2.color != NONE)
+              else if (!currentturn->card2.color)
                 errormsg = "Not allowed to draw from the drawpile if you chose to draw from the discard pile instead. Error near";
               else
                 currentturn->move |= RANDOMDRAW;
             }
-            if (lastmove == NONE) lastmove = whichmove;
+            if (lastmove == 0) lastmove = whichmove;
           break;
         } // switch (currentmode)
       } // if (!end_head)
 
+      if (currentmode == COMPLAIN) errormsg = "Cruft";
       if (errormsg != NULL)
         cerr << errormsg << " '" << string_slice(data,field_start,i).c_str()
              << "' at position " << field_start << endl << endl;
-      
       field_start = -1;
-
     } // if (is_sep)
   } // for  
 }
