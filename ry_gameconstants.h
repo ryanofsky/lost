@@ -20,7 +20,7 @@ public:
   enum { PLAY = 1, DROP = 2, PASS = 3, RANDOMDRAW = 4 }; // move types, RANDOMDRAW is a flag
   enum { KICKER = -1, NONE = -1 }; // other constants 
   enum { CARD_MIN = 2, CARD_MAX = 10, NUM_COLORS = 5, NUM_PLAYERS = 4 }; // counts
-  
+
   typedef map<string,int> SymTable;
   SymTable colors;
   SymTable tokens;
@@ -44,7 +44,7 @@ public:
     tokens["hand"] = HAND;
     tokens["campaign"] = CAMPAIGN;
     tokens["discard"] = DISCARD;
-    tokens["turn"] = TURN;
+    tokens["lastturn"] = TURN;
     tokens["drawpile"] = DRAWPILE;
     tokens["handsize"] = HANDSIZE;
     
@@ -61,7 +61,10 @@ public:
   }
   
   static const char * GetColor(int c);
-  
+  static const char * GetTeam(int t);
+  static const char * GetLongColor(int c);
+  static char GetShortColor(int c);
+  static char GetValue(int v);  
 };
 
 #endif
