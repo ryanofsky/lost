@@ -74,6 +74,7 @@ public:
 class NormalStack : public Stack // normal stack of cards
 {
 public:
+  vector<Card> cards;
 
   NormalStack() : cards() { }
   
@@ -104,9 +105,7 @@ public:
     cerr << endl;
   }
   
-private:
 
-  vector<Card> cards;  
 };
 
 class ProbStack : public Stack // probablistic stack :)
