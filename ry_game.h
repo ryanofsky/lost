@@ -16,7 +16,6 @@ public:
 
   void countCards()
   {
-    
     // estimate by counting
     
     emptyProbStacks(myhand);
@@ -79,7 +78,98 @@ public:
 
   int findFirstSuccessors()
   {
-    return 0;  
+    ProbStack camp;
+    
+    // value proportional to how much potential a campaign has
+    double CampaignScores[GameConstants::NUM_COLORS];
+    
+    // value proportional to how much potential a discard pile has
+    double ScavengeScores[GameConstants::NUM_COLORS];
+
+    hands[GameConstants::HOME].fromNormal(myhand);
+    goodcampaigns = 0;
+    for(int i = 0; i < GameConstants::NUM_COLORS; ++i)
+    {
+      Normal2Prob(campaign[0][i],camp);      
+      double o = camp.score();
+      int first = Card(i,GameConstants::KICKER).getIndex();
+      int last = Card(i,GameConstants::CARD_MAX).getIndex();
+      
+      // estimated number of turns it would take
+      // to build up this campaign
+      double num = 0;
+
+      for(int j = first; j < last; ++j)
+      {
+        double d1 = hands[HOME].getprob(j);
+        double d2 = hands[HOMEP].getprob(j) / 1.5;
+        double d3 = camp.getprob(j);
+        num += d1 + d2;
+        camp.setprob(d1 + d2 + d3);
+      }
+      
+      // The way campaigns are evaluated is to take the estimated
+      // score minus the current score and then to 
+      // divide by the estimated number of moves it would
+      // take to reach final score.
+      CampaignScores[i] = (camp.score()-o) / num;  
+      if (CampaignScores[i] > 0) ++goodcampaigns;
+      
+      NormalStack camp1;
+      NormalStack::Iterator it;
+      camp1 = campaign[0][i];
+      int lastscore = camp1.score();
+      ScavengeScores[i] = 0;
+      int j = 1;
+      for (it = discards[i].cards.begin(); it != discards[i].cards.end(); ++it)
+      { 
+        camp1.addCard(it);
+        int score = camp1.score();
+        ScavengeScores[i] += ((double)(score - lastscore)/j);
+        lastscore = score;
+        ++j;  
+      }
+    };
+    
+    struct med // intermediate data structure used for sorting
+    {
+      i int;
+      d double;
+      med(int i_, double d_) : i(i_), d(d_) { }
+    };
+    
+    med campaignarray[GameConstants::NUM_COLORS];
+    med discardarray[GameConstants::NUM_COLORS];
+
+    for(int i = 0; i < GameConstants::NUM_COLORS; ++i)
+    {
+      campaignarray[i] = med(i, CampaignScores[i]);
+      discardarray[i] = med(i, ScavengeScores[i]); 
+    }  
+      
+    for(int i = 0; i < GameConstants::NUM_COLORS; ++i)
+    for(int j = i; i < GameConstants::NUM_COLORS - 1; ++j)
+    {
+      if (campaignarray[i].d < campaignarray[j].d)
+        swap(campaignarray[i], campaignarray[j]);
+      if (discardarray[i].d < discardarray[j].d)
+        swap(discardarray[i], discardarray[j]);        
+    }
+    
+    int cn(0), dn(0);
+    firstturnc = 0;
+    while(cn < GameConstants::NUM_COLORS && dn < GameConstants::NUM_COLORS)
+    {
+      NormalStack::Iterator it;
+      for (it = myhand.cards.begin(); it != myhand.cards.end(); ++it)
+      { 
+        camp1.addCard(it);
+        int score = camp1.score();
+        ScavengeScores[i] += ((double)(score - lastscore)/j);
+        lastscore = score;
+        ++j;  
+      }
+    }
   }
 
   int findSuccessors(int whoseturn)
@@ -116,6 +206,10 @@ public:
   Turn lastturns[GameConstants::NUM_PLAYERS];  
 
 private:  
+  
+  Turn firstturns[4];
+  int firstturnc;
+  
   void inline emptyProbStacks(NormalStack & n)
   {
     NormalStack::iterator it;
