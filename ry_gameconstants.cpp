@@ -29,6 +29,93 @@ const char * GameConstants::GetColor(int c)
   }
 }
 
+const char * GameConstants::GetLongColor(int c)
+{
+  switch(c)
+  {
+    case GameConstants::RED:
+      return "red";
+    break;
+    case GameConstants::YELLOW:
+      return "yellow";
+    break;
+    case GameConstants::GREEN:
+      return "green";
+    break;
+    case GameConstants::BLUE:
+      return "blue";
+    break;
+    case GameConstants::WHITE:
+      return "white";
+    break;
+    default:
+      BARF("GameConstants::GetLongColor(int) was passed an invalid color.");
+    break;
+  }
+  return NULL;
+}
+
+char GameConstants::GetShortColor(int c)
+{
+  switch(c)
+  {
+    case GameConstants::RED:
+      return 'R';
+    break;
+    case GameConstants::YELLOW:
+      return 'Y';
+    break;
+    case GameConstants::GREEN:
+      return 'G';
+    break;
+    case GameConstants::BLUE:
+      return 'B';
+    break;
+    case GameConstants::WHITE:
+      return 'W';
+    break;
+    default:
+      BARF("GameConstants::GetShortColor(int) was passed an invalid color.");
+    break;
+  }
+  return 0;
+}
+
+char GameConstants::GetValue(int v)
+{
+  if (0 <= v && v <= 9)
+    return v + 0x30;
+  else if (v == GameConstants::KICKER)
+    return 'K';
+  else if (v == 10)
+    return 'T';
+  else  
+    BARF("GameConstants::GetValue(int) was passed an invalid value.");
+  return 0;  
+}
+
+const char * GameConstants::GetTeam(int t)
+{
+  switch (t)
+  {
+    case GameConstants::HOME:
+      return "My";
+    break;
+    case GameConstants::AWAY:
+      return "My opponent's";
+    break;
+    case GameConstants::HOMEP:
+      return "My partner's";
+    break;
+    case GameConstants::AWAYP:
+      return "My opponent's partner's";
+    break;  
+    default:
+      return "Sombody's";
+    break;
+  }
+}
+
 const Card GameConstants::cardcodes[] = 
 {
   Card( NONE,  0 ),        // 0x30 '0'
