@@ -28,12 +28,12 @@ Turn ABsearch::go(Game & game)
   Turn turn;
   int mx(0);
   
-  int n = game.findfirstsuccessors();
+  int n = game.findFirstSuccessors();
   for (int i = 0; i < n; ++i)
   {
     Turn t; double pscore;
     
-    game.getsuccessor(i, succ, turn, pscore);
+    game.getSuccessor(i, succ, turn, pscore);
     go(succ,1,GameConstants::AWAY);
     double score = succ.backedUp + pscore * 2;
     if (i == 0 || score > mx)
@@ -57,7 +57,7 @@ void ABsearch::go(Game & game, int depth, int whoseturn)
     Game succ;
     
     // generate successor nodes      
-    int n = game.findsuccessors(whoseturn);
+    int n = game.findSuccessors(whoseturn);
 
     // figure out which player goes next
     int nextturn = (whoseturn + 1) % GameConstants::NUM_PLAYERS;
@@ -67,7 +67,7 @@ void ABsearch::go(Game & game, int depth, int whoseturn)
 
     for(int i = 0; i < n; ++i) // loop through successors
     {
-      game.getsuccessor(i, succ); // put a successor game in succ
+      game.getSuccessor(i, succ); // put a successor game in succ
       
       // search this successor
       go(succ, depth+1, nextturn);
