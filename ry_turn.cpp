@@ -1,59 +1,64 @@
 #include "ry_turn.h"
+#include "ry_gameconstants.h"
 
 #include <iostream>
-using std::cerr;
+
 using std::cout;
+using std::cerr;
+using std::endl;
+
+extern GameConstants GC;
 
 void Turn::output()
 {
   cout << "turn:";
-  int m = move & ~GameConstants::RANDOMDRAW;
-  if (m == GameConstants::PLAY)
+  int m = move & ~GC.RANDOMDRAW;
+  if (m == GC.PLAY)
     cout << "campaign-home-";
-  else if (m == GameConstants::DROP)
+  else if (m == GC.DROP)
     cout << "discard-";
   
-  if (m == GameConstants::PLAY || m == GameConstants::DROP)
+  if (m == GC.PLAY || m == GC.DROP)
   {
-    cout << GameConstants::GetLongColor(card1.color) << ';'
-         << GameConstants::GetValue(card1.points) 
-         << GameConstants::GetShortColor(card1.color) << ';';
-    if ((move & GameConstants::RANDOMDRAW) != 0)
+    cout << GC.colorInfo[card1.color].name << ';'
+         << GC.pointSymbol(card1.points) 
+         << GC.colorInfo[card1.color].symbol << ';';
+    if ((move & GC.RANDOMDRAW) != 0)
       cout << "drawpile;";
     else
     {
       cout << "discard-"
-           << GameConstants::GetLongColor(card2.color) << ';'
-           << GameConstants::GetValue(card2.points) 
-           << GameConstants::GetShortColor(card2.color) << ';';            
+           << GC.colorInfo[card2.color].name << ';'
+           << GC.pointSymbol(card2.points) 
+           << GC.colorInfo[card2.color].symbol << ';';            
     }  
   }
-  else if (move == GameConstants::PASS)
+  else if (move == GC.PASS)
   {
     cout << "pass;"
-         << GameConstants::GetValue(card1.points) 
-         << GameConstants::GetShortColor(card1.color) << ';'
-         << GameConstants::GetValue(card2.points) 
-         << GameConstants::GetShortColor(card2.color) << ';';
+         << GC.pointSymbol(card1.points) 
+         << GC.colorInfo[card1.color].symbol << ';'
+         << GC.pointSymbol(card2.points) 
+         << GC.colorInfo[card2.color].symbol << ';';
   }
   cout << endl;
 }
 
 void Turn::describe()
 {
-  int m = move & ~GameConstants::RANDOMDRAW;
-  if (m == GameConstants::PLAY)
+  int m = move & ~GC.RANDOMDRAW;
+  if (m == GC.PLAY)
   {
     cerr << "Played a ";
     card1.describe();
   }
-  else if (m == GameConstants::DROP)
+  else if (m == GC.DROP)
   {
     cerr << "Discarded a ";
     card1.describe();
   };
   
-  if (m == GameConstants::PLAY || m == GameConstants::DROP)
+  if (m == GC.PLAY || m == GC.DROP)
   {
     cerr << " and picked up a ";
     if (card2)
@@ -61,7 +66,7 @@ void Turn::describe()
     else
       cerr << "card";
     
-    if ((move & GameConstants::RANDOMDRAW) != 0)
+    if ((move & GC.RANDOMDRAW) != 0)
     {
        cerr << " from the draw pile";
     }
@@ -70,7 +75,7 @@ void Turn::describe()
       cerr << " from a discard stack";
     }
   }
-  else if (move == GameConstants::PASS)
+  else if (move == GC.PASS)
   {
     if (!card1 && !card2) 
     {
