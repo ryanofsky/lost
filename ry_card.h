@@ -121,6 +121,12 @@ public:
       cerr << "None";
     cerr << endl;
   }
+  
+  NormalStack & operator= (NormalStack const & ns)
+  {
+    this->cards = ns.cards;
+    return *this;
+  }
 };
 
 class ProbStack : public Stack // probablistic stack :)
@@ -191,6 +197,20 @@ public:
     return (int)score;
   }
   
+  void copyNormal(NormalStack & n)
+  {
+    probsum = 0;
+    for(int i = 0; i < DIM(probs); ++i)
+      probs[i] = 0;
+
+    NormalStack::iterator it;
+    for (it = n.cards.begin(); it != n.cards.end(); ++it)
+    { 
+      p.setprob(*it, 1);
+    }    
+  }
+  
+  
   void addCard(Card c)
   {
     setprob(c, 1.0);
@@ -205,6 +225,16 @@ public:
   {
     cerr << numcards << " cards" << endl;
   }
+  
+  ProbStack & operator= (ProbStack const & ns)
+  {
+    this->numcards = ns.numcards;
+    this->probsum = ns.probsum;
+    for(int i = 0; i < DIM(probs); ++i)
+      this->probs[i] = ns.probs[i];
+    return *this;
+  }  
+  
 private:
   int numcards;
   int probsum;
