@@ -1,3 +1,10 @@
+/****************************************
+* Russell Yanofsky                      *
+* rey4@columbia.edu                     *
+* ry_cardstacks.cpp                     *
+* Card Stack and Stack Skew Classes     *
+****************************************/
+
 #include "ry_cardstacks.h"
 #include "ry_help.h"
 
@@ -27,10 +34,10 @@ void CardStacks::addCard(int stack, int card)
 {  
   dist[stack][card] += 1.0;
   ++stackisum[stack];
-  if (stack == GC.CAMPAIGN + GC.HOMETEAM || stack == GC.CAMPAIGN + GC.AWAYTEAM)
+  if (stack == CAMPAIGNS + GC.HOMETEAM || stack == CAMPAIGNS + GC.AWAYTEAM)
   {
     Card c = GC.cardInfo[card].card;
-    int team = stack - GC.CAMPAIGN;
+    int team = stack - CAMPAIGNS;
     if (campaignmin[team][c.color] < c.points)
       campaignmin[team][c.color] = c.points;
   }
@@ -40,7 +47,7 @@ void CardStacks::addCard(int stack, int card)
     int ncards = GameConstants::NUM_CARDS / GameConstants::NUM_COLORS;
     int color = GC.cardInfo[card].card.color;
     assert (discardSize[color] >= 0 && discardSize[color] < ncards);
-    int pos = ncards * color + discardSize[color] - 1;
+    int pos = ncards * color + discardSize[color];
     discardOrder[pos] = card;
     ++discardSize[color];    
   }
@@ -176,10 +183,10 @@ void CardStacks::passCard(int cardno, int source, int dest, bool fractional)
     } 
     while(fractional && moveamt < 1.0 && c >= m); 
 
-    if (dest == GC.CAMPAIGN + GC.HOMETEAM || dest == GC.CAMPAIGN + GC.AWAYTEAM)
+    if (dest == CAMPAIGNS + GC.HOMETEAM || dest == CAMPAIGNS + GC.AWAYTEAM)
     {
       Card c = GC.cardInfo[cardno].card;
-      int team = dest - GC.CAMPAIGN;
+      int team = dest - CAMPAIGNS;
       if (campaignmin[team][c.color] < c.points)
         campaignmin[team][c.color] = c.points;
     }      
@@ -208,7 +215,7 @@ void CardStacks::passCard(int cardno, int source, int dest, bool fractional)
 
 float CardStacks::getnum(int stack, int card)
 {
-  return dist[stack][card] * stackisum[stack] / stacksum[stack];
+  return dist[stack][card] > 0 ? dist[stack][card] * stackisum[stack] / stacksum[stack] : 0.0;
 }
 
 int CardStacks::discardTop(int color)
