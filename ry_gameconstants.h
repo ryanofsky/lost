@@ -81,4 +81,8 @@ public:
   GameConstants();
 };
 
+// The GameConstants global variable declaration
+// (defined in ry_gameconstants.cpp)
+extern const GameConstants GC;
+
 #endif
