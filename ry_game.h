@@ -7,8 +7,41 @@
 class Game
 {
 public:
+  
+  Game * parent;
+  int backedUp;
+  
+  int findfirstsuccessors()
+  {
+    return 0;  
+  }
+
+  int findsuccessors(int whoseturn)
+  {
+    return whoseturn;  
+  }
+  
+  void getsuccessor(int index, Game & succ)
+  {
+    succ.backedUp = index;
+  }
+
+  void getsuccessor(int index, Game & succ, Turn & turn, double & pscore)
+  {
+    Turn t(turn);
+    succ.backedUp = index;
+    pscore = 0.0;
+    
+  }
+  
+  int eval()
+  {
+    return 0;
+  }
+  
   void parse(const string data);
-  void describe();  
+  void describe();
+  
 public:  
   NormalStack myhand;
   ProbStack hands[GameConstants::NUM_PLAYERS];
