@@ -195,9 +195,12 @@ const Card GameConstants::cardcodes[] =
   Card( NONE,  0 ),        // 0x7A 'z'
 };
 
-const CardInfo GameConstants::DeckInfo[] = 
+const size_t GameConstants::cardcodes_s = 0x30;
+const size_t GameConstants::cardcodes_e = 0x30 + DIM(GameConstants::cardcodes);
+
+const CardInfo GameConstants::deckinfo[] = 
 {
-  CardInfo(Card(RED,    KICKER), 1),    // 0 
+  CardInfo(Card(RED,    KICKER), 3),    // 0 
   CardInfo(Card(RED,    2     ), 2),    // 1 
   CardInfo(Card(RED,    3     ), 2),    // 2 
   CardInfo(Card(RED,    4     ), 2),    // 3 
@@ -207,7 +210,7 @@ const CardInfo GameConstants::DeckInfo[] =
   CardInfo(Card(RED,    8     ), 1),    // 7 
   CardInfo(Card(RED,    9     ), 1),    // 8 
   CardInfo(Card(RED,    10    ), 1),    // 9 
-  CardInfo(Card(YELLOW, KICKER), 1),    // 10 
+  CardInfo(Card(YELLOW, KICKER), 3),    // 10 
   CardInfo(Card(YELLOW, 2     ), 2),    // 11 
   CardInfo(Card(YELLOW, 3     ), 2),    // 12 
   CardInfo(Card(YELLOW, 4     ), 2),    // 13 
@@ -217,7 +220,7 @@ const CardInfo GameConstants::DeckInfo[] =
   CardInfo(Card(YELLOW, 8     ), 1),    // 17 
   CardInfo(Card(YELLOW, 9     ), 1),    // 18 
   CardInfo(Card(YELLOW, 10    ), 1),    // 19 
-  CardInfo(Card(GREEN,  KICKER), 1),    // 20 
+  CardInfo(Card(GREEN,  KICKER), 3),    // 20 
   CardInfo(Card(GREEN,  2     ), 2),    // 21 
   CardInfo(Card(GREEN,  3     ), 2),    // 22 
   CardInfo(Card(GREEN,  4     ), 2),    // 23 
@@ -227,7 +230,7 @@ const CardInfo GameConstants::DeckInfo[] =
   CardInfo(Card(GREEN,  8     ), 1),    // 27 
   CardInfo(Card(GREEN,  9     ), 1),    // 28 
   CardInfo(Card(GREEN,  10    ), 1),    // 29 
-  CardInfo(Card(BLUE,   KICKER), 1),    // 30 
+  CardInfo(Card(BLUE,   KICKER), 3),    // 30 
   CardInfo(Card(BLUE,   2     ), 2),    // 31 
   CardInfo(Card(BLUE,   3     ), 2),    // 32 
   CardInfo(Card(BLUE,   4     ), 2),    // 33 
@@ -237,7 +240,7 @@ const CardInfo GameConstants::DeckInfo[] =
   CardInfo(Card(BLUE,   8     ), 1),    // 37 
   CardInfo(Card(BLUE,   9     ), 1),    // 38 
   CardInfo(Card(BLUE,   10    ), 1),    // 39 
-  CardInfo(Card(WHITE,  KICKER), 1),    // 40 
+  CardInfo(Card(WHITE,  KICKER), 3),    // 40 
   CardInfo(Card(WHITE,  2     ), 2),    // 41 
   CardInfo(Card(WHITE,  3     ), 2),    // 42 
   CardInfo(Card(WHITE,  4     ), 2),    // 43 
@@ -249,5 +252,4 @@ const CardInfo GameConstants::DeckInfo[] =
   CardInfo(Card(WHITE,  10    ), 1),    // 49 
 };
 
-const size_t GameConstants::cardcodes_s = 0x30;
-const size_t GameConstants::cardcodes_e = 0x30 + DIM(GameConstants::cardcodes);
+const size_t GameConstants::deckinfo_size = DIM(GameConstants::deckinfo);

@@ -20,8 +20,7 @@ public:
   enum { HOME = 0, AWAY, HOMEP, AWAYP }; // players
   enum { PLAY = 1, DROP = 2, PASS = 3, RANDOMDRAW = 4 }; // move types, RANDOMDRAW is a flag
   enum { KICKER = -1, NONE = -1 }; // other constants 
-  enum { CARD_MIN = 2, CARD_MAX = 10, NUM_COLORS = 5, NUM_PLAYERS = 4 }; // counts
-
+  enum { CARD_MIN = 2, CARD_MAX = 10, NUM_COLORS = 5, NUM_PLAYERS = 4, NUM_CARDS = 75 }; // counts
   typedef map<string,int> SymTable;
   SymTable colors;
   SymTable tokens;
@@ -31,9 +30,8 @@ public:
   static const Card cardcodes[];
   static const size_t cardcodes_s;
   static const size_t cardcodes_e;
-  static const CardInfo DeckInfo[];
-  
-  //Card allcards[(CARD_MAX - CARD_MIN + 2) * NUM_COLORS];
+  static const CardInfo deckinfo[];
+  static const size_t deckinfo_size;
   
   GameConstants()
   {
