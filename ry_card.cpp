@@ -35,3 +35,19 @@ bool Card::Parse(char c1, char c2, Card & c)
   return false;
 }
 
+int Card::getIndex()
+{
+  int p;
+
+  if (color == GameConstants::NONE)
+    return -1;
+
+  if(isbetween((char)GameConstants::CARD_MIN,(char)GameConstants::CARD_MAX,points))
+    p = points - GameConstants::CARD_MIN + 1;
+  else if (points != GameConstants::KICKER)
+    p = 0;
+  else  
+    return -1;
+    
+  return p+color*(GameConstants::CARD_MAX-GameConstants::CARD_MIN+2);
+}
