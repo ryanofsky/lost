@@ -1,108 +1,72 @@
 #include "ry_alphabeta.h"
+#include "ry_gameconstants.h"
 
 #include <algorithm>
 #include <assert.h>
 using std::min;
 using std::max;
 
-extern const GameConstants GC;
-
-/*
-
-  Alpha-Beta-like search.
-  
-  The program assumes this ordering of players
-
-  HOME
-  AWAY
-  HOMEP
-  AWAYP
-
-  The ordering affects the workings of the algorithm, but probably does not
-  have much of an impact on results.
-  
-  https://www1.columbia.edu/sec/bboard/013/coms4701-001/msg00036.html
-  
-*/
-
-Turn ABsearch::go(Game & game)
+void ABsearch::go(Game & game, int depth, bool pbackedUp)
 {
-  Turn turn;
-  int i(0), mx(0);
+  // terminating condition
+  if (depth >= _maxdepth)
+  {
+    game.backedUp = game.eval();
+    return;
+  }
 
-  game.findSuccessors(GC.HOME,0);
-  assert(game.moves.size() > 0);
+  // generate successor nodes      
+  game.findSuccessors();
+    
+  // another reason to terminate
+  if (game.moves.size() == 0)
+  {
+    game.backedUp = game.eval();
+    return;
+  }
+
+  // true if game has a valid backed up value    
+  bool backedUp = false;
   
-  while(game.moves.size() > 0)
+  while(game.moves.size() > 0) // loop through successors
   {
     Turn t = game.moves.top();
     game.moves.pop();
 
-    Game succ(game, t);
-    go(succ,1,GameConstants::AWAY);
-    
-    double score = succ.backedUp * 2 + t.eval;
-    if (i == 0 || score > mx)
+    // put a successor game in succ, takes a big chunk of stack space
+    Game succ(game,t);
+      
+    // search this successor (calculate its backed up value)
+    go(succ, depth+1, backedUp);
+
+    int whoseteam = GC.playerInfo[game.whoseturn].team;
+
+    // normal minimax logic here;
+    bool update = !backedUp
+      || (whoseteam == GC.HOMETEAM && game.backedUp < succ.backedUp)
+      || (whoseteam == GC.AWAYTEAM && game.backedUp > succ.backedUp);
+      
+    if (update)
     {
-      mx = score;
-      turn = t;
+      game.backedUp = succ.backedUp;
+      backedUp = true;
+      if (depth == 0) game.newturn = t;
     }
-    ++i;
-  }
-  return turn;
-}
 
-void ABsearch::go(Game & game, int depth, int whoseturn)
-{
-  if (depth >= _maxdepth)
-  {
-    game.backedUp = game.eval();
-  }
-  else // if (depth < maxdepth)
-  {
-    // figure out which player goes next
-    int nextturn = (whoseturn + 1) % GameConstants::NUM_PLAYERS;
-    
-    // generate successor nodes      
-    game.findSuccessors(whoseturn, depth);
-    assert(game.moves.size() > 0);
-    
-    int i(0);
-    while(game.moves.size() > 0) // loop through successors
+    // alpha-beta pruning logic here
+    if (pbackedUp)
     {
-      Turn t = game.moves.top();
-      game.moves.pop();
-
-      Game succ(game,t); // put a successor game in succ
+      assert(game.parent != NULL);
+      int parentteam = GC.playerInfo[game.parent->whoseturn].team;
       
-      // search this successor
-      go(succ, depth+1, nextturn);
-
-      if (i == 0) // first successor
-        game.backedUp = succ.backedUp;
-      else
+      if (whoseteam != parentteam)
       {
-        // normal minimax logic here
-        if (whoseturn == GameConstants::HOME || whoseturn == GameConstants::HOMEP)
-          game.backedUp = max(game.backedUp, succ.backedUp);
-        else
-          game.backedUp = min(game.backedUp, succ.backedUp);
+        if (parentteam == GC.HOMETEAM && game.backedUp <= game.parent->backedUp)
+          return;
+         
+        if (parentteam == GC.AWAYTEAM && game.backedUp >= game.parent->backedUp)
+          return;
       }
-      
-      // alpha-beta-like pruning logic here
-      if (game.parent != NULL && game.parent->backedUp >= 0)
-      {
-        if (whoseturn == GameConstants::HOME || whoseturn == GameConstants::HOMEP)
-        {
-          if (game.backedUp > game.parent->backedUp) 
-            return;
-        }
-        else
-        {
-          if (game.backedUp < game.parent->backedUp) 
-            return;
-        }
-      } 
-    } // for
-  } // if (depth < maxdepth)
+    } 
+  } // while
 }
