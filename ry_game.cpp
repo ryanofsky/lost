@@ -305,3 +305,45 @@ void Game::parse(const string data)
     } // if (is_sep)
   } // for  
 }
+
+void Game::describe()
+{
+  cerr << "My Cards:  ";
+  myhand.describe();
+  cerr << endl << endl;
+  
+  for(int i = 0; i < 2; ++i)
+  {
+    if (i == 0)
+      cerr << "My Campaigns:" << endl << endl;
+    else
+      cerr << "Opposing Campaigns:" << endl << endl;
+  
+    for(int j = 0; j < GameConstants::NUM_COLORS; ++j)
+    {
+      cerr << "  " << GameConstants::GetColor(j) << " ";
+      cerr << "Campaign: ";
+      campaigns[i][j].describe();
+      cerr << endl;
+    }
+    cerr << endl;
+    
+    cerr << "Drawpile: ";
+    drawpile.describe();
+    cerr << endl << endl;
+  }
+  
+  for(int i = 0; i < GameConstants::NUM_PLAYERS; ++i)
+  {
+    cerr << GameConstants::GetTeam(i) << " last move: ";
+    lastturns[i].describe();
+    cerr << endl << endl;
+  }
+  
+  for(int i = 0; i < GameConstants::NUM_PLAYERS; ++i)
+  {
+    cerr << GameConstants::GetTeam(i) << " hand: ";
+    hands[i].describe();
+    cerr << endl << endl;
+  }
+}
