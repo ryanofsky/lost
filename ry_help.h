@@ -19,12 +19,14 @@ using std::string;
 using std::map;
 using std::numeric_limits;
 
+// return true if c is in [a,b]
 template<typename T>
 bool inline isbetween(const T a, const T b, const T c)
 {
   return (a < b) ? (a <= c) && (c <= b) : (b <= c) && (a <= b);
 }
 
+// simple exception class
 class Exception
 {
 public:  
@@ -65,23 +67,27 @@ bool inline map_get(map<Key,T,U,V> const & m, const Key & key, T & t)
   }  
 };
 
-string inline string_slice(string str, size_t start, size_t end)
+// get a slice of a string
+string inline string_slice(string str, int start, int end)
 {
   return str.substr(start, end - start);
 };
 
+// returns true if two floating point numbers a,b can be considered equal
 template<typename T>
 double fequals(T a, T b)
 {
-  return (a<b ? (a-b) : (b-a)) <= numeric_limits<T>::epsilon();
+  return (a>b ? (a-b) : (b-a)) <= numeric_limits<T>::epsilon();
 }
 
+// return true for two floating points a,b if a <= b
 template<typename T>
 double lessequals(double a, double b)
 {
   return a <= b + numeric_limits<T>::epsilon();
 }
 
+// returns the size of a single dimensionalal, not dynamically allocated array
 #define DIM(a) (sizeof(a)/sizeof(a[0]))
 
 #endif
