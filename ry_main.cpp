@@ -1,9 +1,13 @@
 #include <iostream>
+
 #include "ry_game.h"
+#include "ry_alphabeta.h"
+#include "ry_turn.h"
 
 using std::endl;
 using std::cerr;
 
+// main method
 int main(int argc, char *argv[])
 {
   if (argc != 2)
@@ -17,21 +21,26 @@ int main(int argc, char *argv[])
   //const char *c = "hand:TB;6R;TG;4G;5Y;4Y;2W;6G;\\ncampaign-home-red:\\ncampaign-home-yellow:\\ncampaign-home-green:\\ncampaign-home-blue:\\ncampaign-home-white:\\ncampaign-away-red:\\ncampaign-away-yellow:\\ncampaign-away-green:\\ncampaign-away-blue:\\ncampaign-away-white:\\ndiscard-red:2R;4R;7R;\\ndiscard-yellow:3Y;KY;8Y;KY;\\ndiscard-green:3G;2G;\\ndiscard-blue:7B;3B;\\ndiscard-white:6W;KW;\\nlastturn-home:discard-blue;3B;drawpile;6G;\\nlastturn-away:discard-green;2G;drawpile;\\nlastturn-homeP:discard-red;4R;drawpile;\\nlastturn-awayP:discard-re ;7R;drawpile;\\nhandsize-home:8;\\nhandsize-away:8;\\nhandsize-homeP:8;\\nhandsize-awayP:8;\\ndrawpile:30;";
   const char * c = argv[1];
   
+  // declare game state, g
   Game g;
+  
+  // load game state
   g.parse(c);
+
+  // do some guesswork to make the game state more useful
+  g.countCards();
+
   //g.describe();
+
+  // alpha beta search with depth limit of 12
+  ABsearch ab(10);
   
-  //cerr << "test err";
+  // do alpha beta search, put best move in g.newturn
+  ab.go(g);
   
-  cerr << endl << endl;
-  
-  vector<Card>::iterator vi;
-  vi = g.myhand.cards.begin();
-  if (vi)
-  {
-    Turn t;
-    t.move = GameConstants::DROP | GameConstants::RANDOMDRAW;
-    t.card1 = *vi;
-    t.output();
-  }
+  // display the best move
+  g.newturn.output();
+
+  // that is all
+  return 0;
 }
