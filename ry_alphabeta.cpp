@@ -1,8 +1,11 @@
 #include "ry_alphabeta.h"
 
 #include <algorithm>
+#include <assert.h>
 using std::min;
 using std::max;
+
+extern const GameConstants GC;
 
 /*
 
@@ -24,23 +27,27 @@ using std::max;
 
 Turn ABsearch::go(Game & game)
 {
-  Game succ;
   Turn turn;
-  int mx(0);
+  int i(0), mx(0);
+
+  game.findSuccessors(GC.HOME,0);
+  assert(game.moves.size() > 0);
   
-  int n = game.findFirstSuccessors();
-  for (int i = 0; i < n; ++i)
+  while(game.moves.size() > 0)
   {
-    Turn t; double pscore;
-    
-    game.getSuccessor(i, succ, turn, pscore);
+    Turn t = game.moves.top();
+    game.moves.pop();
+
+    Game succ(game, t);
     go(succ,1,GameConstants::AWAY);
-    double score = succ.backedUp + pscore * 2;
+    
+    double score = succ.backedUp * 2 + t.eval;
     if (i == 0 || score > mx)
     {
       mx = score;
       turn = t;
     }
+    ++i;
   }
   return turn;
 }
@@ -53,26 +60,25 @@ void ABsearch::go(Game & game, int depth, int whoseturn)
   }
   else // if (depth < maxdepth)
   {
-    // variable to hold successor games
-    Game succ;
-    
-    // generate successor nodes      
-    int n = game.findSuccessors(whoseturn);
-
     // figure out which player goes next
     int nextturn = (whoseturn + 1) % GameConstants::NUM_PLAYERS;
-
-    // -1 denotes a backed up value that hasn't been calculated yet
-    game.backedUp = -1;
-
-    for(int i = 0; i < n; ++i) // loop through successors
+    
+    // generate successor nodes      
+    game.findSuccessors(whoseturn, depth);
+    assert(game.moves.size() > 0);
+    
+    int i(0);
+    while(game.moves.size() > 0) // loop through successors
     {
-      game.getSuccessor(i, succ); // put a successor game in succ
+      Turn t = game.moves.top();
+      game.moves.pop();
+
+      Game succ(game,t); // put a successor game in succ
       
       // search this successor
       go(succ, depth+1, nextturn);
 
-      if (game.backedUp < -1) // first successor
+      if (i == 0) // first successor
         game.backedUp = succ.backedUp;
       else
       {
@@ -83,23 +89,18 @@ void ABsearch::go(Game & game, int depth, int whoseturn)
           game.backedUp = min(game.backedUp, succ.backedUp);
       }
       
-      
       // alpha-beta-like pruning logic here
       if (game.parent != NULL && game.parent->backedUp >= 0)
       {
-       
-        switch(whoseturn)
+        if (whoseturn == GameConstants::HOME || whoseturn == GameConstants::HOMEP)
         {
-          case GameConstants::HOME:
-          case GameConstants::HOMEP:
-            if (game.backedUp > game.parent->backedUp) 
-              return;
-          break;
-          case GameConstants::AWAY:
-          case GameConstants::AWAYP:
-            if (game.backedUp < game.parent->backedUp) 
-              return;
-          break;          
+          if (game.backedUp > game.parent->backedUp) 
+            return;
+        }
+        else
+        {
+          if (game.backedUp < game.parent->backedUp) 
+            return;
         }
       } 
     } // for
