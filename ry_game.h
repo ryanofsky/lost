@@ -1,14 +1,18 @@
+/****************************************
+* Russell Yanofsky                      *
+* rey4@columbia.edu                     *
+* ry_game.h                             *
+* Game representation and strategies    *
+****************************************/
+
 #ifndef ry_game_h
 #define ry_game_h
 
 #include "ry_card.h"
 #include "ry_turn.h"
 #include "ry_cardstacks.h"
-#include <algorithm>
-#include <queue>
 
 using std::min;
-using std::priority_queue;
 
 // Game Class
 // Holds the state of the game at a single moment in time
@@ -42,6 +46,7 @@ public:
   // print a description of the game state to the standard error output
   // (just used for debugging)
   void describe();
+  void moves_describe();
 
   // The next few variables and methods are used in the alpha beta search
 
@@ -55,9 +60,14 @@ public:
   Turn newturn;
  
   // list of possible moves that can be made by the
-  // current player in the game
-  priority_queue<Turn> moves;
+  // current player in the game, stored as a heap
+  Turn moves[GameConstants::NUM_COLORS*3];
+  int moves_count;
   
+  void moves_push(Turn t);
+  Turn moves_pop();
+  int moves_size();
+
   // which card to be picked up at the end of the turn.
   // ignored for pass moves. If card color is NONE, it indicates
   // that the player should pick up from a draw pile. otherwise
