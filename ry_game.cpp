@@ -15,10 +15,7 @@ extern GameConstants GC;
 
 void Game::parse(const string data)
 {
-
-  const int MAXhyphenS(3);
-
-  /////////////////////////// FIND CONVENIENT NAMES FOR VARIABLES AND CONSTANTS
+  /////////////////////////////////////////////////////////////////// CONSTANTS
 
   enum
   { 
@@ -36,21 +33,26 @@ void Game::parse(const string data)
     DROP       = GameConstants::DROP,
     PASS       = GameConstants::PASS,
     RANDOMDRAW = GameConstants::RANDOMDRAW,
-    NONE       = GameConstants::NONE
+    NONE       = GameConstants::NONE,
+    S_DRAWPILE = ProbStacks::DRAWPILE,
+    S_DISCARD  = ProbStacks::DISCARD,
+    S_HANDS    = ProbStacks::HANDS
   }; 
   
+  enum { MAXHYPHENS = 3 };
+  
   ////////////////////////////////////////////////////////////////// LOOP STATE
-
-  Stack * currentstack(NULL);
-  Turn * currentturn(NULL);
 
   enum { COMPLAIN, ADDCARD, SETLENGTH, SETTURN } currentmode;
   currentmode = COMPLAIN;
 
+  int currentstack = NONE;
+  Turn * currentturn = NULL;
+
   int field_start(-1), lastmove;
   bool escaped(false);
 
-  int hyphen[MAXhyphenS];
+  int hyphen[MAXHYPHENS];
   int hyphens;
 
   size_t l = data.length()-1;
@@ -58,6 +60,7 @@ void Game::parse(const string data)
 
   //////////////////////////////////////////////////////////////////////// LOOP
 
+  stacks.clear(); 
   for(size_t i(0); i <= l; ++i)
   {
     char c = str[i];
@@ -85,7 +88,7 @@ void Game::parse(const string data)
       escaped = true;
 
     // hyphen test
-    if (is_hyphen && hyphens < MAXhyphenS)
+    if (is_hyphen && hyphens < MAXHYPHENS)
       hyphen[hyphens++] = i;
 
     if (is_sep && field_start >= 0) // end of field test
@@ -103,7 +106,7 @@ void Game::parse(const string data)
         {
           case HAND:
             currentmode = ADDCARD;
-            currentstack = &this->myhand;
+            currentstack = S_HANDS + HOME;
           break;
           case CAMPAIGN:
             if (hyphens == 2)
@@ -115,8 +118,8 @@ void Game::parse(const string data)
                 map_get(GC.colors, string_slice(data, hyphen[1]+1, i),whichcolor)
               )
               {
-                whichteam = whichteam == HOME || whichteam == HOMEP ? 0 : 1;
-                currentstack = &campaigns[whichteam][whichcolor];
+                whichteam = whichteam == HOME || whichteam == HOMEP ? HOMETEAM : AWAYTEAM;
+                currentstack = S_CAMPAIGNS + whichteam;
                 currentmode = ADDCARD;
               }
             }  
@@ -126,7 +129,7 @@ void Game::parse(const string data)
             {
               if (map_get(GC.colors, string_slice(data, hyphen[0]+1, i),whichcolor))
               {
-                currentstack = &discards[whichcolor];
+                currentstack = S_DISCARD;
                 currentmode = ADDCARD;
               }
             }
@@ -136,7 +139,7 @@ void Game::parse(const string data)
             {
               if (map_get(GC.players, string_slice(data, hyphen[0]+1, i),whichplayer))
               {
-                currentstack = &hands[whichplayer];
+                currentstack = S_HANDS + whichplayer;
                 currentmode = SETLENGTH;
               }
             }
@@ -144,7 +147,7 @@ void Game::parse(const string data)
           case DRAWPILE:
             if (hyphens == 0)
             {
-              currentstack = &drawpile;
+              currentstack = S_DRAWPILE;
               currentmode = SETLENGTH;
             }
           break;
@@ -173,7 +176,7 @@ void Game::parse(const string data)
         {
           case ADDCARD:
             if (i - field_start == 2 && Card::Parse(str[field_start], str[field_start+1],c))
-              currentstack->addCard(c);
+              stacks.addCard(currentstack, c.getIndex());
             else
               errormsg = "Unable to parse card";
           break;
@@ -186,7 +189,7 @@ void Game::parse(const string data)
               break;
             }
             if (legit)
-              currentstack->setNumCards(atoi(&str[field_start]));
+              stacks.setNumCards(currentstack, atoi(&str[field_start]));
             else
               errormsg = "Expected integer, not";
           break;
@@ -303,7 +306,9 @@ void Game::parse(const string data)
              << "' at position " << field_start << endl << endl;
       field_start = -1;
     } // if (is_sep)
-  } // for  
+  } // for
+  
+  stacks.normalize(isknown);
 }
 
 void Game::describe()
@@ -347,3 +352,15 @@ void Game::describe()
     cerr << endl << endl;
   }
 }
+
+bool const Game::isknown[ProbStacks::NUM_STACKS] = 
+{
+  false,   // DRAWPILE
+  true,    // DISCARD
+  true,    // CAMPAIGNS + HOMETEAM
+  true,    // CAMPAIGNS + AWAYTEAM
+  true,    // HANDS + HOME
+  false,   // HANDS + AWAY
+  false,   // HANDS + HOMEP
+  false    // HANDS + AWAYP
+};
