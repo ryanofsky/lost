@@ -1,3 +1,10 @@
+/****************************************
+* Russell Yanofsky                      *
+* rey4@columbia.edu                     *
+* ry_game.cpp                           *
+* Game representation and strategies    *
+****************************************/
+
 #include "ry_game.h"
 #include "ry_gameconstants.h"
 #include "ry_card.h"
@@ -10,12 +17,16 @@
 #include <iomanip>
 #include <assert.h>
 #include <math.h>
+#include <algorithm>
 
 using std::cerr;
 using std::endl;
 using std::setw;
+using std::push_heap;
+using std::pop_heap;
+using std::make_heap;
 
-Game::Game() : stacks(), whoseturn(GC.HOME), parent(NULL)
+Game::Game() : stacks(), whoseturn(GC.HOME), parent(NULL), moves_count(0)
 {
 }
 
@@ -513,14 +524,55 @@ void Game::describe()
     cerr << setw(6) << (int)(stacks.stacksum[col]*100);
   cerr << endl << endl;
 
+  cerr << "Minimum playable cards: " << endl << "  HOME  AWAY" << endl;
+  
+  
+  for(int color = 0; color < GC.NUM_COLORS; ++color)  
+  {
+    int cardno;
+    for(int i=0; i < 2; ++i)
+    {
+      cerr << "   ";
+      if(stacks.isPlayable(i, color, cardno))
+      {
+        Card card = GC.cardInfo[cardno].card;
+        cerr << GC.pointSymbol(card.points) << GC.colorInfo[card.color].symbol;
+      }  
+      else
+        cerr << "--";
+    }
+    cerr << endl;
+  }
+  cerr << endl;
+  
   cerr << "Last Turns:"<< endl << endl;  
   
-  for(int i = 0; i < GameConstants::NUM_PLAYERS; ++i)
+  for(int i = 0; i < GC.NUM_PLAYERS; ++i)
   {
     cerr << GC.playerInfo[i].possesive << " last move: ";
     lastturns[i].describe();
     cerr << endl << endl;
   }
+}
+
+void Game::moves_push(Turn t)
+{
+  assert(moves_count < DIM(moves));
+  moves[moves_count] = t;
+  ++moves_count;
+  push_heap(moves,moves+moves_count);
+}
+
+Turn Game::moves_pop()
+{
+  pop_heap(moves,moves+moves_count);
+  --moves_count;
+  return moves[moves_count];
+}
+
+int Game::moves_size()
+{
+  return moves_count;
 }
 
 void Game::findSuccessors()
@@ -599,8 +651,9 @@ void Game::findSuccessors()
         float & i = pinvestments[team][color];
         float & c = pcounts[team][color];
       
-        i = c = stacks.getnum(S_CAMPAIGNS + team, kick);
-        p = 0;
+        float f = stacks.getnum(S_CAMPAIGNS + team, kick);
+        i += f;
+        c += f; 
   
         float sc = c; // starting c value
 
@@ -613,7 +666,8 @@ void Game::findSuccessors()
           float cardpoints = GC.cardInfo[cardno].card.points;
           p += dist * cardpoints;
           c += dist;
-          if (player == whoseturn) lowcard = cardno;
+          if (player == whoseturn)
+            lowcard = cardno;
         }
         
         if (team == whoseteam)
@@ -643,7 +697,6 @@ void Game::findSuccessors()
                              investments[oteam][color],
                              counts[oteam][color]);        
 
-
     // Find a card to discard. (chooses the lowest possible one)
     float found = 0;
     int dropcard = GC.NONE;
@@ -670,11 +723,11 @@ void Game::findSuccessors()
         turn.eval = 0;
       else  
         turn.eval = ((cscore - pscore) + (ecscore - epscore)) / 2;
-      moves.push(turn);
+      moves_push(turn);
     }    
     
     playeval[color] = -100000000;
-    
+   
     // if a play is possible
     if (lowcard != GC.NONE)
     {
@@ -720,12 +773,12 @@ void Game::findSuccessors()
           turn.card1 = GC.cardInfo[playcard[0]].card;
           turn.card2 = GC.cardInfo[playcard[2]].card;
         }
-      
+
         turn.move = GC.PLAY;
         turn.card1 = Card(color,GC.cardInfo[playcard[0]].card.points);
         turn.eval = playeval[color];
         
-        moves.push(turn);
+        moves_push(turn);
       }
     }
   }; // for color
@@ -748,16 +801,18 @@ void Game::findSuccessors()
       value += c.points * playeval[c.color] * stacks.getnum(S_DRAWPILE,cardno);
   }
   value /= stacks.stackisum[S_DRAWPILE];
-  
+ 
   // compare drawpile value to each of the discard piles
   for(int color=0; color<GC.NUM_COLORS; ++color)
   {
+
     stacks.campaignmin[whoseteam][color];
     double nvalue = 0;
     int discardtop = stacks.discardTop(color);
     if (discardtop != GC.NONE)
     {
       int points = GC.cardInfo[discardtop].card.points;
+
       if (points == GC.KICKER)
         nvalue = GC.CARD_MAX;
       else
@@ -769,7 +824,9 @@ void Game::findSuccessors()
         this->pickup = GC.cardInfo[discardtop].card; 
       }
     }
-  }  
+  }
+  if (!parent)
+    moves_describe(); 
 };
 
 Game::Game(Game const & g, Turn & t)
@@ -781,6 +838,7 @@ Game::Game(Game const & g, Turn & t)
   stacks = g.stacks;
   whoseturn = (g.whoseturn + 1) % GC.NUM_PLAYERS;
   parent = &g;
+  moves_count = 0;
   
   // give constants shorter name
   enum
@@ -908,5 +966,43 @@ void Game::examineCampaigns()
     }
   }
 }
+
+void Game::moves_describe()
+{
+  for(int i = moves_count; i > 0; --i)
+  {
+    Turn t = moves[0];
+    cerr << "eval = " << t.eval << " ";
+
+    if (t.move == GC.PLAY)
+    {
+      cerr << "Play a ";
+      t.card1.describe();
+    }
+    else if (t.move == GC.DROP)
+    {
+      cerr << "Discard a ";
+      t.card1.describe();
+    };
   
+    if (t.move == GC.PLAY || t.move == GC.DROP)
+    {
+      cerr << ", pick up a ";
+      if (pickup)
+        pickup.describe();
+      else
+        cerr << "random card";
+    }
+    else if (t.move == GC.PASS)
+    {
+      cerr << "Pass a ";
+      t.card1.describe();
+      cerr << " and a ";
+      t.card2.describe();
+    }
+    cerr << endl;    
+    pop_heap(moves, moves + i);
+  }
+  make_heap(moves,moves+moves_count);
+}
   
