@@ -11,11 +11,13 @@
 #include <iostream>
 #include <string>
 #include <map>
+#include <limits>
 
 using std::cerr;
 using std::endl;
 using std::string;
 using std::map;
+using std::numeric_limits;
 
 template<typename T>
 bool inline isbetween(const T a, const T b, const T c)
@@ -67,6 +69,18 @@ string inline string_slice(string str, size_t start, size_t end)
 {
   return str.substr(start, end - start);
 };
+
+template<typename T>
+double fequals(T a, T b)
+{
+  return (a<b ? (a-b) : (b-a)) <= numeric_limits<T>::epsilon();
+}
+
+template<typename T>
+double lessequals(double a, double b)
+{
+  return a <= b + numeric_limits<T>::epsilon();
+}
 
 #define DIM(a) (sizeof(a)/sizeof(a[0]))
 
