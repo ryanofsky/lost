@@ -9,7 +9,6 @@ using std::vector;
 using std::cerr;
 using std::endl;
 
-
 class Card
 {
 public:  
@@ -22,45 +21,17 @@ public:
   Card(char color_, char points_) : 
     color(color_), points(points_) { }
   
-  void describe()
-  {
-    cerr << GameConstants::GetColor(color);
-    if (points == GameConstants::KICKER)
-      cerr << " Investment";
-    else
-      cerr << " " << (int)points;
-  }
-  
-  static bool Parse(char c1, char c2, Card & c)
-  {
-    const char s = GameConstants::cardcodes_s;
-    const char e = GameConstants::cardcodes_e;
-    
-    if(isbetween(s,e,c1) && isbetween(s,e,c2))
-    {
-      const Card cd1 = GameConstants::cardcodes[c1 - s];
-      const Card cd2 = GameConstants::cardcodes[c2 - s];
-      
-      if (cd1.color != GameConstants::NONE && cd2.points != 0 )
-      {
-        c.color = cd1.color;
-        c.points = cd2.points;
-        return true;
-      }
-      else if (cd2.color != GameConstants::NONE && cd1.points != 0 )
-      {
-        c.color = cd2.color;
-        c.points = cd1.points;
-        return true;
-      }
-    }
-    return false;
-  }
-  
+  void describe();
+
+  static bool Parse(char c1, char c2, Card & c);
+  int getIndex();
+
   operator bool ()
   {
     return color != GameConstants::NONE;
   }
+
+
 };
 
 class Stack // abstract class representing a stack of cards
@@ -104,8 +75,6 @@ public:
       cerr << "None";
     cerr << endl;
   }
-  
-
 };
 
 class ProbStack : public Stack // probablistic stack :)
