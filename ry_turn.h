@@ -1,3 +1,10 @@
+/****************************************
+* Russell Yanofsky                      *
+* rey4@columbia.edu                     *
+* ry_turn.h                             *
+* Game Turn representation              *
+****************************************/
+
 #ifndef ry_turn_h
 #define ry_turn_h
 
@@ -32,7 +39,7 @@ public:
   // used when moves are stored in containers like Game::moves
   bool operator<(Turn const & t) const
   {
-    return this->eval < t.eval;
+    return move != 0 ? this->eval < t.eval : t.move == 0 ? false : true;
   }
 
   // default constructor
