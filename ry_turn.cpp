@@ -7,8 +7,6 @@ using std::cout;
 using std::cerr;
 using std::endl;
 
-extern GameConstants GC;
-
 void Turn::output()
 {
   cout << "turn:";
