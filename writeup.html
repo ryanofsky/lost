@@ -1,0 +1,65 @@
+<html>
+<title>Lost Cities Writeup</title>
+
+<p align=right>Russell Yanofsky<br><a href="mailto:rey4@columbia.edu">rey4@columbia.edu</a></p>
+<table border=1>
+<tr>
+  <td>ry_alphabeta.h<br>ry_alphabeta.cpp</td>
+  <td>alpha beta search class</td>
+</tr>
+<tr>
+  <td>ry_card.h<br>ry_card.cpp</td>
+  <td>class used to represent individual cards</td>
+</tr>
+<tr>
+  <td>ry_cardstacks.h<br>ry_cardstacks.cpp</td>
+  <td>class which represents and manipulates card distributions</td>
+</tr>
+<tr>
+  <td>ry_game.h<br>ry_game.cpp</td>
+  <td>holds game state, parses game info, simulates and evaluates player moves</td>
+</tr>
+<tr>
+  <td>ry_gameconstants.h<br>ry_gameconstants.cpp</td>
+  <td>program-wide constants defined here</td>
+</tr>
+<tr>
+  <td>ry_help.h</td>
+  <td>helper utilities. an exception class, simple math and STL routines</td>
+</tr>
+<tr>
+  <td>ry_main.cpp</td>
+  <td>holds the main() method, runs the show</td>
+</tr>
+<tr>
+  <td>ry_turn.h<br>ry_turn.cpp</td>
+  <td>class used to represent previous turns and potential turns made by players</td>
+</tr>
+</table>
+
+<p>There were three methods I considered using for my Lost Cities player. The first thing that came to mind was to write some simple code that would choose the next move to make based on a set of strategies which I could manually code. Strategies would be simple things like "Do not discard a card which could be played by the opposing team," "If your partner passes two cards of the same color, play the lowest card you have of that color," or "Start a campaign when you have many cards of the same color." There are many drawbacks to this approach. In order for the computer to be able to choose between different alternatives those alternatives have to be quantifiable. The program would need to use formulas and *magic* constants obtained with hand wavy logic and trial and error. Compared to more generic and elegant AI techniques like A* and neural networks it would look like just a series of hacks. Another drawback to using this approach is that it puts an upper limit on how good the program could be. At best it could be smart but predictable, and at worst it would be unpredictable and random.</p>
+
+<p>Another approach would be to use a more generic game playing algorithm like minimax search or heuristic search to choose which move to make. The main problem with using these searches is that Lost Cities is not a perfect information game. The searches depend on being able to generate new game states from the existing game state. This is possible during the current players turn because the contents of that players hand is known, but it is not possible to enumerate the possible turns of any other players because their hands are not known. Another drawback is that in order for a search strategy to be effective in lost cities, it would have to be fairly deep. Depending on the evaluation algorithm used, a search that was too shallow might never start any campaigns, because it would never see far ahead enough in the game to the point where there is a return on the initial investment.</p>
+
+<p>Yet another strategy would be to make a program that could learn how to play well using genetic algorithms or neural networks. Chapter 12 describes a successful backgammon playing program that evaluates moves using a trained feed-forward neural network. Using a learning device like a neural network or a genetic algorithm has the advantage that it can interoperate with other techniques. A neural network could be used in a graph search function to evaluate game states. Or a genetic algorithm could be used to find "optimal" magic values for the strategy testing approach. There are <b>no</b> inherent drawbacks to using one of these techniques with Lost Cities. But although I thought a lot about how these could be applied to this problem I didn't use them in the end. One reason is that their implementations are so much more complex the others, and because their inner workings are so far removed from the actual game play. Graph searching and strategy testing are intuitive techniques. It is easy to see how decisions made in their implementation will affect the behavior of the final program. Learning techniques are more unpredictable. With no experience using either of these methods, I wouldn't be able to use them effectively.</p>
+
+<p>The actual technique I did use is a combination of Alpha-Beta search and strategy testing. The actual alpha beta search algorithm runs almost exactly like the one described in the book. (The only difference, is that this alpha beta search accepts any ordering of players. At first it was unclear from the posts on the bulletin board if the order was <code>&lt;HOME, HOMEP, AWAY, AWAYP&gt;</code> or <code>&lt;HOME, AWAY, HOMEP, AWAYP&gt;</code>. The difference in the ordering probably does not have much affect on results, but it does affect the working of the algorithm since in the first case, pruning can only occur at every other level and in the second case pruning can occur at every level in the tree.) The actual alpha beta search code is very generic. It knows only four things about the Lost Cities game class:</p>
+
+<ol>
+  <li>A method called <code>Game::findSuccessors()</code> and Game constructor which generates potential turns at any game state, and generates future game state for each of those potential turns.</li>
+  <li>The <code>Game::eval()</code> function which is used to numerically evaluate the tip nodes</li>
+  <li>Two fields on the game class called <code>parent</code> and <code>backedUp</code> which hold a pointer to the previous game state, and the current game states backed up value respectively</li>
+  <li>Which team the current player is on (whether to maximize or minimize the backed up value</li>
+</ol>  
+  
+<p>The strategy testing method comes into play during the findSuccessors() method. This method finds up to 15 potential moves for the current player, evaluates them, and puts them onto an ordered heap. The moves at the top of the heap are simulated as future game states and eventually evaluated when the Game::eval() function is called on tip nodes.</p>
+
+<p>I was able to solve the perfect information problem described above and also help alleviate the "spaghetti code with magic numbers" issue by choosing a good data structure to hold the game state. Actually, the data structure I used is the lowly static array. The array has two dimensions. The first is indexed by stack number and the second is indexed by card number. The stack numbers refer to stacks of cards used in the game like players hands, the campaign piles, the draw pile, etc. The card number are just numbers from 0-49 which are used to identify specific cards in the game. The numbers in the array form a distribution which tells exactly which cards are in which stacks. The contents of the unknown stacks are approximated, and methods are provided which allow the strategy testing code to easily retrieve and update information about the game state in a fairly high-level manner. (I'm leaving out many important details here, but the is a lengthy description of how everything works in the comments at the top of <code>ry_cardstacks.h</code>. The comments in <code>Game::countCards()</code> and <code>Game::findSuccessors()</code> show how things work in a step-by-step fashion.)</p>
+
+<p>In the end, however there are a number of problems with the program I and submitting. Most of them stem from the fact that I ran out of time to test and tweak the heuristics after I debugged them and worked out all the different compiler issues.
+<ul>
+<li>The lost cities player I'm submitting is currently very conservative. It usually ends up with a score somewhere between -30 and 30. I'm not quite sure why this happens, although it could be related to the shallow search tree issue described above. If I had more time I would test the program's response in various situations, stepping through with a debugger and printing variables to the console, to see what things might be causing this.</li>
+<li><code>Game::countCards()</code> and <code>Game::findSuccessors()</code> aren't technically spaghetti code, because they are easy to modify and are mostly sequential instead of having a lot of interdependencies. But they are monolithic 300 line functions that contain a lot of repetitive code. It would be good to be able to factor that out (probably by adding more methods to the ry_cardstacks class), and break up the rest of the code into smaller pieces. This also make debugging and tweaking much simpler.</li>
+</ul>
+
+</html>
