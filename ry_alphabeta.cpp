@@ -1,15 +1,55 @@
+/****************************************
+* Russell Yanofsky                      *
+* rey4@columbia.edu                     *
+* ry_alphabeta.cpp                      *
+* Alpha Beta Search Class               *
+****************************************/
+
 #include "ry_alphabeta.h"
 #include "ry_gameconstants.h"
 
 #include <algorithm>
 #include <assert.h>
+#include <time.h>
+#include <iostream>
+
 using std::min;
 using std::max;
+using std::cerr;
+using std::endl;
+
+// maximum number of branches to search.
+// since moves are on an ordered heap,
+// this gives preference to the moves
+// that the strategy algorithm says
+// are better.
+enum { BRANCHES = 4 };
+
+// Alpha beta searches usually return
+// in around 1 second, but sometimes
+// they can go on for as much as 30.
+// The maxtime parameter helps limit
+// this. After the specified number
+// of seconds has elapsed, the search
+// is cut short. 
+enum { MAXTIME = 10 };
 
 void ABsearch::go(Game & game, int depth, bool pbackedUp)
 {
+  static time_t start_time;
+  static int time_check(0);
+  time_t t(0);
+  if (time_check & 255 == 0)
+  {
+    time_check = 0;
+    time(&t);
+    
+    if (depth == 0)
+      start_time = t; 
+  } 
+
   // terminating condition
-  if (depth >= _maxdepth)
+  if (depth >= _maxdepth || (time_check == 0 && t - start_time > MAXTIME))
   {
     game.backedUp = game.eval();
     return;
@@ -19,7 +59,7 @@ void ABsearch::go(Game & game, int depth, bool pbackedUp)
   game.findSuccessors();
     
   // another reason to terminate
-  if (game.moves.size() == 0)
+  if (game.moves_size() == 0)
   {
     game.backedUp = game.eval();
     return;
@@ -28,10 +68,10 @@ void ABsearch::go(Game & game, int depth, bool pbackedUp)
   // true if game has a valid backed up value    
   bool backedUp = false;
   
-  while(game.moves.size() > 0) // loop through successors
+  int i = 0;
+  while(game.moves_size() > 0 && i < BRANCHES) // loop through successors
   {
-    Turn t = game.moves.top();
-    game.moves.pop();
+    Turn t = game.moves_pop();
 
     // put a successor game in succ, takes a big chunk of stack space
     Game succ(game,t);
@@ -67,6 +107,7 @@ void ABsearch::go(Game & game, int depth, bool pbackedUp)
         if (parentteam == GC.AWAYTEAM && game.backedUp >= game.parent->backedUp)
           return;
       }
-    } 
+    }
+    ++i;
   } // while
 }
