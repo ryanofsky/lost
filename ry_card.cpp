@@ -1,3 +1,10 @@
+/****************************************
+* Russell Yanofsky                      *
+* rey4@columbia.edu                     *
+* ry_card.cpp                           *
+* Lost Cities Card Class                *
+****************************************/
+
 #include "ry_card.h"
 #include "ry_gameconstants.h"
 #include "ry_help.h"

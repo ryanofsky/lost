@@ -1,3 +1,10 @@
+/****************************************
+* Russell Yanofsky                      *
+* rey4@columbia.edu                     *
+* ry_gameconstants.h                    *
+* Lost Cities Player Constants          *
+****************************************/
+
 #ifndef ry_gameconstants_h
 #define ry_gameconstants_h
 

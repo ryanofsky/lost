@@ -1,3 +1,10 @@
+/****************************************
+* Russell Yanofsky                      *
+* rey4@columbia.edu                     *
+* ry_turn.cpp                           *
+* Game Turn representation              *
+****************************************/
+
 #include "ry_turn.h"
 #include "ry_gameconstants.h"
 

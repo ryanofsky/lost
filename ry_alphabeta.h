@@ -1,3 +1,10 @@
+/****************************************
+* Russell Yanofsky                      *
+* rey4@columbia.edu                     *
+* ry_alphabeta.h                        *
+* Alpha Beta Search Class               *
+****************************************/
+
 #ifndef ry_alphabeta_h
 #define ry_alphabeta_h
 

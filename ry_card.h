@@ -1,3 +1,10 @@
+/****************************************
+* Russell Yanofsky                      *
+* rey4@columbia.edu                     *
+* ry_card.h                             *
+* Lost Cities Card Class                *
+****************************************/
+
 #ifndef ry_card_h
 #define ry_card_h
 
