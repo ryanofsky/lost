@@ -1,3 +1,9 @@
+// real work
+// TODO: finish up Game psuedo-copy constructor
+
+// administravia
+// TODO: extract methods, rebuild makefile, compile, clue alphabeta in on the new Game interface
+
 #ifndef ry_game_h
 #define ry_game_h
 
@@ -19,53 +25,107 @@ public:
   void countCards()
   {
     ProbSkew s;
-    stacks.applySkew(s,isknown);
-    
+    ProbStacks::ProbMatrix & skew = s.skew;
+   
+    enum
+    {
+      S_DRAWPILE = ProbStacks::DRAWPILE,
+      S_DISCARD  = ProbStacks::DISCARD,
+      S_CAMPAIGNS = ProbStacks::CAMPAIGNS
+      S_HANDS    = ProbStacks::HANDS
+    };
+   
     // estimate by looking at players last moves
     
     int players[] =
     { 
-      GameConstants::HOMEP,
-      GameConstants::AWAY,
-      GameConstants::AWAYP
+      GC.HOMEP,
+      GC.AWAY,
+      GC.AWAYP
     };
     
-    for(int i = 0; i < 3; ++i)
+    for(int i = 0; i < DIM(players); ++i)
     {
       int p = players[i];
-      Turn t = lastturns[p];
-      if (t.move & ~GameConstants::RANDOMDRAW == GameConstants::PLAY)
+      int team = GC.playerInfo[p].team;
+      Turn turn = lastturns[p];
+      int move = turn.move & ~GC.RANDOMDRAW;
+      
+      if (move == GC.PLAY)
       {
-        // unlikely they have any lower cards of the campaign they just played
-        // therefore lower probabilities of lower cards
-        changeProb(hands[p], t.card1.points, false, t.card1.color, false,2);
+        // very unlikely they have any lower cards of the campaign they just
+        // played, therefore lower probabilities of lower cards
+        int s = Card(turn.card1.color, GC.KICKER).getIndex();
+        int e = move.card1.getIndex();
+        for(int cardno = s; cardno < e; ++cardno)
+          skew[S_HANDS + p][cardno] -= 5.0;
         
         // likewise, raise slightly the probability that they have higher cards
-        changeProb(hands[p], t.card1.points, true, t.card1.color, true,1.5);
+        int l = Card(turn.card1.color, GC.CARD_MAX).getIndex());
+        for(int cardno = e; cardno <= l; ++cardno)
+          skew[S_HANDS + p][cardno] += 0.8;
       }
-      else if (t.move & ~GameConstants::RANDOMDRAW == GameConstants::DROP)
+      else if (move == GC.DROP)
       {
-        // less likely they have any lower cards of the campaign they
-        // just dropped
-        changeProb(hands[p], t.card1.points, false, t.card1.color, false,0.5);
+        // If they dropped a card, they don't have many others of the same campaign
         
-        // even less likely they have any higher cards of the campaign 
-        // they just dropped
-        changeProb(hands[p], t.card1.points, true, t.card1.color, false,1.0);
+        int s = Card(turn.card1.color, GC.KICKER).getIndex();
+        int e = move.card1.getIndex();
+        int l = Card(turn.card1.color, GC.KICKER).getIndex();
+        for(int cardno = s; cardno <= l; ++cardno)
+          skew[S_HANDS + p][cardno] -= (cardno == e) ? 2.0 : 1.0;
       }
-    }
-    
-    Turn t = lastturns[GameConstants::HOMEP];
-    if (t.move == GameConstants::PASS)
-    {
-      if (t.card1.color == t.card2.color)
+      else if (move == PASS && turn.card1 && turn.card2)
       {
-        // if I was passed two cards of the same color, my teammate
-        // probably has higher cards in the same campaign
-        int v = min(t.card1.points, t.card2.points);
-        changeProb(hands[GameConstants::HOMEP], v, true, t.card1.color, true,2.0);
+        if (turn.card1.color == turn.card2.color)
+        {
+          // passed two cards of the same color.
+          // raise the probability that this person has higher cards of the same campaign
+          // lower the probability that the person has the cards theat he just passed
+          
+          int s1 = Card(turn.card1.color, GC.KICKER).getIndex();
+          int e1 = Card(turn.card1.color, GC.CARD_MAX).getIndex();
+          int moved = turn.card1.getIndex();
+          int s2 = Card(turn.card2.color, GC.KICKER).getIndex();
+          bool decrease = true;   
+          for(int c1 = s1; c1 <= e1; ++c1)
+          {                       
+            if (c1 == moved || c2 == moved)
+            {                     
+              skew[S_HANDS + p][c1] -= 2;
+              decrease = false;   
+            }                     
+            else                  
+              skew[S_HANDS +      
+             if (decrease)        
+              skew[S_HANDS + p][c1] -= 0.5;
+            else
+              skew[S_
+                
+          }
+        }
+
+
+          // TODO: fill in this blank
+        }
+        else
+        {
+          // passed two random cards, so slightly lower the probability that
+          // partner has other cards of these colors
+          
+          int s1 = Card(turn.card1.color, GC.KICKER).getIndex();
+          int e1 = Card(turn.card1.color, GC.CARD_MAX).getIndex();
+          int s2 = Card(turn.card2.color, GC.KICKER).getIndex();
+          for(int c1 = s1; c1 <= e1; ++c1)
+          {
+            skew[S_HANDS + p][c1] -= 0.5;
+            skew[S_HANDS + p][c1+s2-s1] -= 0.5;
+          }
+        }
       }
     }
+        
+    stacks.applySkew(s,isknown);
   }  
 
   inline getScore(float points, float investments, float num)
@@ -353,15 +413,16 @@ public:
         stacks.moveCard(t.card1.getIndex(), S_HANDS + g.me, S_DISCARDS);
       }
       
-      if (g.pickup == GC.NONE)
+      if (g.card2.color == GC.NONE)
       {
         t.move |= GC.RANDOMDRAW;
+        stacks.moveCard(GC.NONE, S_DRAWPILE, S_HAND + GC.me));
       }
-      else
+      else // g.card2
       {
-        t.card2 = (g.pickup, 
+        t.card2.point = g.stacks.prob.discardq[t.card2.color].top()->point;
+        stacks.moveCard(t.card2.getIndex(), S_DISCARD + card2.color, S_HANDS + GC.me, 
       }
-      
     }
   }
 
@@ -377,7 +438,6 @@ public:
     return sum;
   }  
  
-  
   float points[GC::NUM_TEAMS][GC::NUM_COLORS];
   float investments[GC::NUM_TEAMS][GC::NUM_COLORS];
   float counts[GC::NUM_TEAMS][GC::NUM_COLORS];
@@ -400,42 +460,6 @@ private:
   
   Turn firstturns[4];
   int firstturnc;
-  
-  void inline emptyProbStacks(NormalStack & n)
-  {
-    NormalStack::iterator it;
-    for (it = n.cards.begin(); it != n.cards.end(); ++it)
-    { 
-      drawpile.setprob(*it, 0);
-      for(int i = 0; i < GameConstants::NUM_PLAYERS; ++i)
-        hands[i].setprob(*it, 0);
-    }
-  }
-  
-  void inline changeProb(ProbStack & p, int startat, bool greater, int color, bool raise, double amt = 1.0)
-  {
-    int first, last, d;
-    
-    first = Card(color, startat).getIndex();
-    if (greater)
-      last = Card(color, GameConstants::CARD_MAX);
-    else  
-      last = Card(color, GameConstants::CARD_MIN) - 1;
-      
-    if (first < 0 || last < 0 || first == last) return;  
-    d = greater ? 1 : -1;
-    
-    for(;;)
-    {
-      first += d;
-      if (first == last) break;
-      double q = p.getprob(first);
-      if (raise)
-        p.setprob(first, 1.0 - (1.0-q) / (amt + 1.0));
-      else
-        p.setprob(first, q / (amt + 1.0));      
-    }
-  }
 };
 
 #endif
